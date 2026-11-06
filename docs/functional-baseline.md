@@ -75,9 +75,10 @@ SELECT AVG(Grade)  FROM Enrollment;   -- 3.2366...
 
 - ✅ **Base de datos:** esquema, datos, agregados, cuenta de solo lectura y
   comportamiento del payload SQLi **ejecutados y verificados** contra SQL
-  Server 2022 real.
-- ⚠️ **Aplicación .NET:** **no compilada ni ejecutada** en el entorno de
-  construcción (Linux sin .NET Framework 4.8 / MSBuild / IIS). El código fuente
-  está completo y listo para compilarse en Windows. Las pruebas `SIGEA.Tests`
-  **no fueron ejecutadas**; requieren un build en Windows. No se declara
-  ninguna prueba .NET como exitosa.
+  Server 2022 Developer Edition real.
+- ✅ **Aplicación .NET y pruebas (`SIGEA.Tests`):** compiladas en `Release` con
+  MSBuild 17.14 (.NET Framework 4.8), precompiladas con `aspnet_compiler.exe`,
+  publicadas en IIS 10 sobre Windows Server 2022 Datacenter en Azure Mexico
+  Central (`mexicocentral`) y verificadas con **10/10 pruebas exitosas** en
+  `vstest.console.exe` (8 pruebas unitarias/offline + 2 pruebas de integración
+  contra SQL Server 2022 local con `SIGEA_IT=1`).

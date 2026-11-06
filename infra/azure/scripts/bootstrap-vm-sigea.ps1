@@ -262,6 +262,13 @@ foreach ($setting in $xml.configuration.appSettings.add) {
 }
 
 $xml.configuration.'system.web'.compilation.debug = "false"
+if (-not $xml.configuration.'system.web'.SelectSingleNode("globalization")) {
+    $glob = $xml.CreateElement("globalization")
+    $glob.SetAttribute("fileEncoding", "utf-8")
+    $glob.SetAttribute("requestEncoding", "utf-8")
+    $glob.SetAttribute("responseEncoding", "utf-8")
+    $xml.configuration.'system.web'.AppendChild($glob) | Out-Null
+}
 $xml.Save($webConfigPath)
 
 Import-Module WebAdministration
