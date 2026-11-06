@@ -7,6 +7,7 @@ using Xunit;
 namespace SIGEA.Tests
 {
     // GROUP 2 - the vulnerability labs must be DISABLED BY DEFAULT.
+    [Collection("LabGateConfig")]
     public class LabGateTests
     {
         private static HttpRequestBase Request(bool isLocal)

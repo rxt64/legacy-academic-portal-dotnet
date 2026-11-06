@@ -28,3 +28,10 @@ src/SIGEA.Web/Web.local.config
 .DS_Store
 Thumbs.db
 *.userprefs
+
+# Azure local parameter overrides & secrets (never commit)
+*.local.bicepparam
+*.private.bicepparam
+*.secrets.json
+*.pfx
+*.pem

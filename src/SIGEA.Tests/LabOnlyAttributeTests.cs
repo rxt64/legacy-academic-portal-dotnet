@@ -10,6 +10,7 @@ namespace SIGEA.Tests
 {
     // GROUP 2 - the [LabOnly] filter makes lab actions behave as 404 when the
     // labs are not enabled for the request.
+    [Collection("LabGateConfig")]
     public class LabOnlyAttributeTests
     {
         private static ActionExecutingContext Ctx(bool isLocal)

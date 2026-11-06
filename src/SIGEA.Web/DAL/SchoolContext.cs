@@ -1,3 +1,5 @@
+using System;
+using System.Configuration;
 using System.Data.Entity;
 using System.Data.Entity.ModelConfiguration.Conventions;
 using SIGEA.Web.Models;
@@ -11,7 +13,31 @@ namespace SIGEA.Web.DAL
     /// </summary>
     public class SchoolContext : DbContext
     {
-        public SchoolContext() : base("name=SchoolContext") { }
+        public SchoolContext() : base(ResolveConnectionString()) { }
+
+        private static string ResolveConnectionString()
+        {
+            var setting = ConfigurationManager.ConnectionStrings["SchoolContext"];
+            if (setting == null || string.IsNullOrWhiteSpace(setting.ConnectionString))
+            {
+                return "name=SchoolContext";
+            }
+
+            var cs = setting.ConnectionString;
+            var envPw = Environment.GetEnvironmentVariable("SIGEA_APP_PASSWORD");
+            if (!string.IsNullOrEmpty(envPw))
+            {
+                if (cs.Contains("${SIGEA_APP_PASSWORD}"))
+                {
+                    cs = cs.Replace("${SIGEA_APP_PASSWORD}", envPw);
+                }
+                else if (cs.Contains("Password=;"))
+                {
+                    cs = cs.Replace("Password=;", "Password=" + envPw + ";");
+                }
+            }
+            return cs;
+        }
 
         public DbSet<Person> People { get; set; }
         public DbSet<Student> Students { get; set; }
