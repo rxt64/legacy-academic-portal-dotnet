@@ -1,0 +1,15 @@
+@model SIGEA.Web.Models.Course
+@{ ViewBag.Title = "Curso"; ViewBag.Active = "courses"; }
+<h1 class="page">Curso @Model.CourseID — @Model.Title</h1>
+<div class="toolbar"><a class="btn" href="@Url.Action("Edit", new { id = Model.CourseID })">Editar</a> <a class="btn" href="@Url.Action("Index")">Volver</a></div>
+<table class="grid" style="width:auto">
+    <tr><th>Número</th><td>@Model.CourseID</td></tr>
+    <tr><th>Título</th><td>@Model.Title</td></tr>
+    <tr><th>Créditos</th><td>@Model.Credits</td></tr>
+    <tr><th>Departamento</th><td>@(Model.Department != null ? Model.Department.Name : "")</td></tr>
+</table>
+<h2 class="sec">Instructores</h2>
+<table class="grid">
+    <tr><th>Nombre</th></tr>
+    @if (Model.Instructors != null) { foreach (var i in Model.Instructors) { <tr><td>@i.FullName</td></tr> } }
+</table>

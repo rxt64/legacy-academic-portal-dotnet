@@ -1,0 +1,16 @@
+@model SIGEA.Web.Models.Student
+@{
+    ViewBag.Title = "Estudiante";
+    ViewBag.Active = "students";
+}
+<h1 class="page">Estudiante: @Model.FullName (#@Model.ID)</h1>
+<div class="toolbar">
+    <a class="btn" href="@Url.Action("Edit", new { id = Model.ID })">Editar</a>
+    <a class="btn" href="@Url.Action("Index")">Volver</a>
+</div>
+<table class="grid" style="width:auto">
+    <tr><th>Apellidos</th><td>@Model.LastName</td></tr>
+    <tr><th>Nombre</th><td>@Model.FirstName</td></tr>
+    <tr><th>Correo</th><td>@Model.Email</td></tr>
+    <tr><th>Fecha de matrícula</th><td>@(Model.EnrollmentDate.HasValue ? Model.EnrollmentDate.Value.ToString("yyyy-MM-dd") : "")</td></tr>
+</table>

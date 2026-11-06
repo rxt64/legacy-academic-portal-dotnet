@@ -1,0 +1,32 @@
+@model SIGEA.Web.Models.DashboardViewModel
+@{
+    ViewBag.Title = "Tablero";
+    ViewBag.Active = "dashboard";
+}
+<h1 class="page">Tablero académico</h1>
+
+<div class="kpis">
+    <div class="kpi"><div class="n">@Model.StudentCount</div><div class="l">Estudiantes</div></div>
+    <div class="kpi"><div class="n">@Model.InstructorCount</div><div class="l">Instructores</div></div>
+    <div class="kpi"><div class="n">@Model.CourseCount</div><div class="l">Cursos</div></div>
+    <div class="kpi"><div class="n">@Model.DepartmentCount</div><div class="l">Departamentos</div></div>
+    <div class="kpi"><div class="n">@Model.EnrollmentCount</div><div class="l">Matrículas</div></div>
+    <div class="kpi"><div class="n">@(Model.AverageGrade.HasValue ? Model.AverageGrade.Value.ToString("0.00") : "-")</div><div class="l">Promedio</div></div>
+    <div class="kpi"><div class="n">@Model.TotalBudget.ToString("N0")</div><div class="l">Presupuesto total</div></div>
+</div>
+<p class="muted">Todos los indicadores se calculan en SQL Server (agregaciones LINQ-to-Entities).</p>
+
+<h2 class="sec">Departamentos y presupuestos</h2>
+<table class="grid">
+    <tr><th>#</th><th>Departamento</th><th class="right">Presupuesto</th><th class="right">Cursos</th><th class="right">Matrículas</th></tr>
+    @foreach (var d in Model.Departments)
+    {
+        <tr>
+            <td>@d.DepartmentID</td>
+            <td>@Html.ActionLink(d.Name, "Details", "Departments", new { id = d.DepartmentID }, null)</td>
+            <td class="right">@d.Budget.ToString("N2")</td>
+            <td class="right">@d.CourseCount</td>
+            <td class="right">@d.EnrollmentCount</td>
+        </tr>
+    }
+</table>

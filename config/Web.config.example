@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  EXAMPLE local-lab connection values for SIGEA. Copy the relevant bits into
+  your local Web.config (git-ignored) or provide the passwords via a
+  Web.config transform / environment substitution.
+
+  The passwords below are THROWAWAY LAB VALUES that match
+  db/accounts/00_create_logins.sql. They guard only a loopback SQL Server
+  with synthetic data. Never reuse them anywhere real, and never commit a
+  filled-in Web.config.
+-->
+<connectionStrings>
+  <add name="SchoolContext"
+       connectionString="Server=localhost;Database=SIGEA;User Id=sigea_app;Password=App#Lab2011;TrustServerCertificate=True;MultipleActiveResultSets=True"
+       providerName="System.Data.SqlClient" />
+  <add name="LabReadOnlyContext"
+       connectionString="Server=localhost;Database=SIGEA;User Id=sigea_labro;Password=LabRo#Lab2011;TrustServerCertificate=True"
+       providerName="System.Data.SqlClient" />
+</connectionStrings>
+
+<!--
+  To enable the local security labs, set in appSettings:
+    <add key="ENABLE_VULNERABILITY_LABS" value="true" />
+  and run IIS Express bound to loopback only.
+-->

@@ -1,0 +1,14 @@
+@model SIGEA.Web.Models.Department
+@{ ViewBag.Title = "Editar departamento"; ViewBag.Active = "departments"; }
+<h1 class="page">Editar departamento</h1>
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.DepartmentID)
+    @Html.ValidationSummary(true)
+    <div class="fld">@Html.LabelFor(m => m.Name) @Html.TextBoxFor(m => m.Name)</div>
+    <div class="fld">@Html.LabelFor(m => m.Budget) @Html.TextBoxFor(m => m.Budget)</div>
+    <div class="fld">@Html.LabelFor(m => m.StartDate) @Html.TextBoxFor(m => m.StartDate, new { placeholder = "AAAA-MM-DD" })</div>
+    <div class="fld">@Html.LabelFor(m => m.InstructorID) @Html.DropDownList("InstructorID", (SelectList)ViewBag.InstructorID, "(sin asignar)")</div>
+    <div class="toolbar"><input type="submit" value="Guardar" /> <a class="btn" href="@Url.Action("Index")">Cancelar</a></div>
+}

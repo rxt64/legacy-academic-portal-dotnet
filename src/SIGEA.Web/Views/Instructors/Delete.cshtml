@@ -1,0 +1,12 @@
+@model SIGEA.Web.Models.Instructor
+@{ ViewBag.Title = "Eliminar instructor"; ViewBag.Active = "instructors"; }
+<h1 class="page">¿Eliminar este instructor?</h1>
+<table class="grid" style="width:auto">
+    <tr><th>Apellidos</th><td>@Model.LastName</td></tr>
+    <tr><th>Nombre</th><td>@Model.FirstName</td></tr>
+</table>
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    <div class="toolbar"><input type="submit" value="Eliminar" /> <a class="btn" href="@Url.Action("Index")">Cancelar</a></div>
+}

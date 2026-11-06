@@ -1,0 +1,12 @@
+@model SIGEA.Web.Models.Enrollment
+@{ ViewBag.Title = "Nueva matrícula"; ViewBag.Active = "enrollments"; }
+<h1 class="page">Nueva matrícula</h1>
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    @Html.ValidationSummary(true)
+    <div class="fld"><label>Estudiante</label> @Html.DropDownList("StudentID", (SelectList)ViewBag.StudentID)</div>
+    <div class="fld"><label>Curso</label> @Html.DropDownList("CourseID", (SelectList)ViewBag.CourseID)</div>
+    <div class="fld">@Html.LabelFor(m => m.Grade) @Html.TextBoxFor(m => m.Grade, new { placeholder = "0.00 - 4.00 (opcional)" })</div>
+    <div class="toolbar"><input type="submit" value="Guardar" /> <a class="btn" href="@Url.Action("Index")">Cancelar</a></div>
+}

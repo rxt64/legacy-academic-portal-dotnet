@@ -1,0 +1,14 @@
+@model SIGEA.Web.Models.Course
+@{ ViewBag.Title = "Editar curso"; ViewBag.Active = "courses"; }
+<h1 class="page">Editar curso</h1>
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.CourseID)
+    @Html.ValidationSummary(true)
+    <div class="fld"><label>Número</label> @Model.CourseID</div>
+    <div class="fld">@Html.LabelFor(m => m.Title) @Html.TextBoxFor(m => m.Title)</div>
+    <div class="fld">@Html.LabelFor(m => m.Credits) @Html.TextBoxFor(m => m.Credits)</div>
+    <div class="fld">@Html.LabelFor(m => m.DepartmentID) @Html.DropDownList("DepartmentID", (SelectList)ViewBag.DepartmentID)</div>
+    <div class="toolbar"><input type="submit" value="Guardar" /> <a class="btn" href="@Url.Action("Index")">Cancelar</a></div>
+}

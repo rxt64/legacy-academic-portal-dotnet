@@ -1,0 +1,22 @@
+@model System.Collections.Generic.IEnumerable<SIGEA.Web.Models.Enrollment>
+@{ ViewBag.Title = "Matrículas"; ViewBag.Active = "enrollments"; }
+<h1 class="page">Matrículas y calificaciones</h1>
+<form method="get" action="@Url.Action("Index")" class="toolbar">
+    <label style="min-width:auto">Curso</label>
+    @Html.DropDownList("courseId", (SelectList)ViewBag.Courses, "(todos)")
+    <input type="submit" value="Filtrar" />
+    <a class="btn" href="@Url.Action("Create")">Nueva matrícula</a>
+</form>
+<table class="grid">
+    <tr><th>#</th><th>Estudiante</th><th>Curso</th><th class="right">Calificación</th><th></th></tr>
+    @foreach (var e in Model)
+    {
+        <tr>
+            <td>@e.EnrollmentID</td>
+            <td>@(e.Student != null ? e.Student.FullName : e.StudentID.ToString())</td>
+            <td>@(e.Course != null ? e.Course.Title : e.CourseID.ToString())</td>
+            <td class="right">@(e.Grade.HasValue ? e.Grade.Value.ToString("0.00") : "(sin calificar)")</td>
+            <td>@Html.ActionLink("editar", "Edit", new { id = e.EnrollmentID }) | @Html.ActionLink("eliminar", "Delete", new { id = e.EnrollmentID })</td>
+        </tr>
+    }
+</table>

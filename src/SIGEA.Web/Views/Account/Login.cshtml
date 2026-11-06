@@ -1,0 +1,15 @@
+@{ ViewBag.Title = "Mi expediente"; ViewBag.Active = "account"; }
+<h1 class="page">Acceso de estudiante</h1>
+@if (ViewBag.Current != null)
+{
+    <div class="msg-mono">Sesión actual: @ViewBag.Current — <a href="@Url.Action("Mine", "Transcript")">ver mi expediente</a> · <a href="@Url.Action("Logout")">cerrar sesión</a></div>
+}
+<p class="muted">Ingrese con el correo de un estudiante ficticio (p. ej. <code>ana.mora@@valleclaro.example</code>).
+   Es un inicio de sesión mínimo para demostrar la diferencia entre autenticación y autorización.</p>
+@using (Html.BeginForm("Login", "Account"))
+{
+    @Html.AntiForgeryToken()
+    @Html.ValidationSummary()
+    <div class="fld"><label>Correo</label> <input type="email" name="email" /></div>
+    <div class="toolbar"><input type="submit" value="Ingresar" /></div>
+}

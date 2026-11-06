@@ -1,0 +1,12 @@
+@model SIGEA.Web.Models.TranscriptViewModel
+@{ ViewBag.Title = "Expediente"; ViewBag.Active = "account"; }
+<h1 class="page">Expediente académico — @Model.StudentName (#@Model.StudentID)</h1>
+<div class="toolbar"><a class="btn" href="@Url.Action("Logout", "Account")">Cerrar sesión</a></div>
+<table class="grid">
+    <tr><th>Curso</th><th class="right">Créditos</th><th class="right">Calificación</th></tr>
+    @foreach (var l in Model.Lines)
+    {
+        <tr><td>@l.Title</td><td class="right">@l.Credits</td><td class="right">@(l.Grade.HasValue ? l.Grade.Value.ToString("0.00") : "(sin calificar)")</td></tr>
+    }
+</table>
+<p>Créditos totales: <b>@Model.TotalCredits</b> · Promedio (GPA): <b>@(Model.Gpa.HasValue ? Model.Gpa.Value.ToString("0.00") : "-")</b></p>

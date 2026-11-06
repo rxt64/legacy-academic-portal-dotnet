@@ -1,0 +1,29 @@
+@using SIGEA.Web.DAL
+@{ ViewBag.Title = "Lab SQLi"; ViewBag.Active = "lab"; }
+<h1 class="page">SECURITY-LAB DOTNET-SQLI-01 — Inyección SQL</h1>
+<p>Búsqueda de estudiantes por apellido. El término se concatena directamente en el SQL y se ejecuta con
+   <code>SqlCommand</code> contra la conexión de solo lectura <code>sigea_labro</code>.</p>
+<form method="get" action="@Url.Action("Sqli")" class="toolbar">
+    <label style="min-width:auto">Apellido contiene</label>
+    <input type="text" name="term" value="@ViewBag.Term" size="40" />
+    <input type="submit" value="Buscar" />
+</form>
+<p class="muted">Reproducción inocua: <code>mora</code> (filtra a 2) y luego <code>x%' OR '1'='1' --</code>
+   (amplía a todo el padrón). Sin modificar datos.</p>
+@if (ViewBag.Sql != null)
+{
+    <h2 class="sec">SQL enviado a SQL Server</h2>
+    <code class="sql">@ViewBag.Sql</code>
+}
+@if (ViewBag.Rows != null)
+{
+    var rows = (System.Collections.Generic.List<LabStudentRow>)ViewBag.Rows;
+    <h2 class="sec">Resultados (@rows.Count)</h2>
+    <table class="grid">
+        <tr><th>#</th><th>Apellidos</th><th>Nombre</th><th>Correo</th><th>Tipo</th></tr>
+        @foreach (var r in rows)
+        {
+            <tr><td>@r.ID</td><td>@r.LastName</td><td>@r.FirstName</td><td>@r.Email</td><td>@r.Discriminator</td></tr>
+        }
+    </table>
+}

@@ -1,0 +1,17 @@
+@model System.Collections.Generic.IEnumerable<SIGEA.Web.Models.Course>
+@{ ViewBag.Title = "Cursos"; ViewBag.Active = "courses"; }
+<h1 class="page">Cursos y créditos</h1>
+<div class="toolbar"><a class="btn" href="@Url.Action("Create")">Nuevo curso</a></div>
+<table class="grid">
+    <tr><th>Número</th><th>Título</th><th class="right">Créditos</th><th>Departamento</th><th></th></tr>
+    @foreach (var c in Model)
+    {
+        <tr>
+            <td>@Html.ActionLink(c.CourseID.ToString(), "Details", new { id = c.CourseID })</td>
+            <td>@c.Title</td>
+            <td class="right">@c.Credits</td>
+            <td>@(c.Department != null ? c.Department.Name : "")</td>
+            <td>@Html.ActionLink("editar", "Edit", new { id = c.CourseID }) | @Html.ActionLink("eliminar", "Delete", new { id = c.CourseID })</td>
+        </tr>
+    }
+</table>

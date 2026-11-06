@@ -1,0 +1,13 @@
+@model SIGEA.Web.Models.Enrollment
+@{ ViewBag.Title = "Eliminar matrícula"; ViewBag.Active = "enrollments"; }
+<h1 class="page">¿Eliminar esta matrícula?</h1>
+<table class="grid" style="width:auto">
+    <tr><th>Estudiante</th><td>@(Model.Student != null ? Model.Student.FullName : Model.StudentID.ToString())</td></tr>
+    <tr><th>Curso</th><td>@(Model.Course != null ? Model.Course.Title : Model.CourseID.ToString())</td></tr>
+    <tr><th>Calificación</th><td>@(Model.Grade.HasValue ? Model.Grade.Value.ToString("0.00") : "(sin calificar)")</td></tr>
+</table>
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    <div class="toolbar"><input type="submit" value="Eliminar" /> <a class="btn" href="@Url.Action("Index")">Cancelar</a></div>
+}

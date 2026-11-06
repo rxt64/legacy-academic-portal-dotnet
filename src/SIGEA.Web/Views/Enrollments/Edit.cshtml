@@ -1,0 +1,14 @@
+@model SIGEA.Web.Models.Enrollment
+@{ ViewBag.Title = "Editar matrícula"; ViewBag.Active = "enrollments"; }
+<h1 class="page">Editar calificación</h1>
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.EnrollmentID)
+    @Html.HiddenFor(m => m.CourseID)
+    @Html.HiddenFor(m => m.StudentID)
+    <div class="fld"><label>Estudiante</label> @(Model.Student != null ? Model.Student.FullName : Model.StudentID.ToString())</div>
+    <div class="fld"><label>Curso</label> @(Model.Course != null ? Model.Course.Title : Model.CourseID.ToString())</div>
+    <div class="fld">@Html.LabelFor(m => m.Grade) @Html.TextBoxFor(m => m.Grade) @Html.ValidationMessageFor(m => m.Grade)</div>
+    <div class="toolbar"><input type="submit" value="Guardar" /> <a class="btn" href="@Url.Action("Index")">Cancelar</a></div>
+}

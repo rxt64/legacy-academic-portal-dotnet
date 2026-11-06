@@ -1,0 +1,108 @@
+/* SIGEA - Portal Académico Interno v2.4
+   Visual look inspired by ~2011 internal academic portals:
+   navy-blue gradient header, bevelled square tabs, #D4D0C8 chrome,
+   GridView-style zebra tables, Tahoma/Verdana, dense compact layout for 1024x768. */
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: Tahoma, Verdana, Geneva, sans-serif;
+  font-size: 12px;
+  color: #1a1a1a;
+  background: #D4D0C8;
+  margin: 0;
+  padding: 0;
+}
+
+.container { width: 1000px; margin: 0 auto; background: #f3f3ee; border-left: 1px solid #9a9a9a; border-right: 1px solid #9a9a9a; }
+
+/* Navy gradient header with fictitious emblem */
+.header {
+  background: #1b2f5e;
+  background: linear-gradient(to bottom, #2a4a8c 0%, #1b2f5e 60%, #122142 100%);
+  color: #fff;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 3px solid #0c1733;
+}
+.header .emblem {
+  width: 42px; height: 42px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #d9b44a, #9c7a14);
+  border: 2px solid #f0e6c0;
+  color: #3a2d00; font-weight: bold; font-size: 10px;
+  display: flex; align-items: center; justify-content: center; text-align:center; line-height:1;
+}
+.header .title { font-size: 17px; font-weight: bold; letter-spacing: .3px; text-shadow: 0 1px 2px #000; }
+.header .subtitle { font-size: 10px; color: #c9d4ea; }
+
+/* Vulnerability-lab warning band */
+.lab-banner {
+  background: repeating-linear-gradient(45deg, #ffe08a, #ffe08a 14px, #f6c445 14px, #f6c445 28px);
+  border-bottom: 1px solid #b8860b;
+  color: #5a3d00; font-weight: bold; text-align: center; padding: 4px; font-size: 11px;
+}
+
+/* Bevelled square tab menu */
+.tabs { background: #C8C4BC; border-bottom: 1px solid #7f7f7f; padding: 4px 8px 0 8px; }
+.tabs a {
+  display: inline-block; padding: 4px 12px; margin-right: 2px; font-size: 11px;
+  text-decoration: none; color: #1b2f5e; background: #D4D0C8;
+  border: 1px solid #7f7f7f; border-bottom: none;
+  box-shadow: inset 1px 1px 0 #ffffff;
+}
+.tabs a.active { background: #f3f3ee; font-weight: bold; position: relative; top: 1px; }
+.tabs a.lab { background: #f6c445; color:#5a3d00; }
+
+.content { padding: 10px 12px; min-height: 360px; }
+
+h1.page { font-size: 15px; color: #1b2f5e; border-bottom: 1px solid #a9a9a9; padding-bottom: 3px; margin: 0 0 8px 0; }
+h2.sec { font-size: 12px; color: #333; background: #D4D0C8; border: 1px solid #9a9a9a; padding: 3px 6px; margin: 10px 0 4px 0; }
+
+/* GridView-style zebra tables */
+table.grid { width: 100%; border-collapse: collapse; font-size: 11px; background: #fff; }
+table.grid th {
+  background: #1b2f5e; background: linear-gradient(to bottom, #2a4a8c, #16264c);
+  color: #fff; text-align: left; padding: 3px 6px; border: 1px solid #0c1733; font-weight: bold;
+}
+table.grid td { padding: 3px 6px; border: 1px solid #c8c8c8; }
+table.grid tr:nth-child(even) td { background: #eceef2; }
+table.grid tr:nth-child(odd) td { background: #ffffff; }
+table.grid a { color: #1b2f5e; }
+
+/* Dense forms */
+.fld { margin-bottom: 4px; }
+label { font-weight: bold; color: #333; display: inline-block; min-width: 150px; vertical-align: top; }
+input[type=text], input[type=number], input[type=email], input[type=date], select, textarea {
+  font-family: Tahoma, Verdana, sans-serif; font-size: 11px;
+  border: 1px solid #7f9db9; padding: 2px 3px; background: #fff;
+}
+.text-danger, .field-validation-error { color: #a00; font-size: 11px; }
+.validation-summary-errors { color:#a00; }
+
+/* Bevelled traditional buttons */
+button, input[type=submit], .btn {
+  font-family: Tahoma, Verdana, sans-serif; font-size: 11px; padding: 2px 10px; color: #111;
+  background: linear-gradient(to bottom, #f6f5ee 0%, #ddd8c4 100%);
+  border: 1px solid #8a8a8a; border-top-color: #fff; border-left-color: #f2f2f2; cursor: pointer;
+  text-decoration: none; display: inline-block;
+}
+button:active, input[type=submit]:active { border-color: #6f6f6f; }
+
+/* KPI tiles */
+.kpis { display: flex; flex-wrap: wrap; gap: 8px; }
+.kpi { flex: 1 1 120px; background: #fff; border: 1px solid #9a9a9a; padding: 6px 8px; }
+.kpi .n { font-size: 20px; font-weight: bold; color: #1b2f5e; }
+.kpi .l { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: .5px; }
+
+/* Monospaced operation messages */
+.msg-mono { font-family: "Courier New", Courier, monospace; font-size: 11px; background: #fffce0; border: 1px solid #c9c07a; padding: 4px 8px; margin-bottom: 8px; white-space: pre-wrap; }
+code.sql { display:block; background:#1e1e1e; color:#d4d4d4; padding:6px; font-size:11px; white-space:pre-wrap; border:1px solid #000; }
+
+.toolbar { margin-bottom: 6px; }
+.toolbar a, .toolbar .btn { margin-right: 4px; }
+.muted { color: #888; }
+.right { text-align: right; }
+
+.footer { text-align: center; color: #555; font-size: 10px; padding: 10px; border-top: 1px solid #9a9a9a; background:#D4D0C8; }

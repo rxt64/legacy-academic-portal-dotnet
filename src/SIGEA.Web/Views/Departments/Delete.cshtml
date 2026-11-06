@@ -1,0 +1,12 @@
+@model SIGEA.Web.Models.Department
+@{ ViewBag.Title = "Eliminar departamento"; ViewBag.Active = "departments"; }
+<h1 class="page">¿Eliminar este departamento?</h1>
+<table class="grid" style="width:auto">
+    <tr><th>Departamento</th><td>@Model.Name</td></tr>
+    <tr><th>Presupuesto</th><td>@Model.Budget.ToString("N2")</td></tr>
+</table>
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    <div class="toolbar"><input type="submit" value="Eliminar" /> <a class="btn" href="@Url.Action("Index")">Cancelar</a></div>
+}
