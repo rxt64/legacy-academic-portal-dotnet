@@ -53,9 +53,10 @@ if ($sqlSvc.Status -ne 'Running') {
 
 $regInstance = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\Instance Names\SQL").MSSQLSERVER
 $mssqlRegPath = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\$regInstance\MSSQLServer"
-$currentLoginMode = (Get-ItemProperty -Path $mssqlRegPath -Name "LoginMode").LoginMode
-$currentDataDir   = (Get-ItemProperty -Path $mssqlRegPath -Name "DefaultData" -ErrorAction SilentlyContinue).DefaultData
-$currentLogDir    = (Get-ItemProperty -Path $mssqlRegPath -Name "DefaultLog" -ErrorAction SilentlyContinue).DefaultLog
+$regProps = Get-ItemProperty -Path $mssqlRegPath
+$currentLoginMode = $regProps.LoginMode
+$currentDataDir   = if ($regProps.PSObject.Properties['DefaultData']) { $regProps.DefaultData } else { "" }
+$currentLogDir    = if ($regProps.PSObject.Properties['DefaultLog'])  { $regProps.DefaultLog }  else { "" }
 
 $needsSqlRestart = $false
 if ($currentLoginMode -ne 2) {
@@ -99,6 +100,31 @@ while ($sw.Elapsed.TotalSeconds -lt $SqlStartupTimeoutSeconds) {
 }
 if (-not $sqlReady) {
     throw "Timeout esperando a que SQL Server acepte conexiones locales (${SqlStartupTimeoutSeconds}s)."
+}
+
+# Verificar si NT AUTHORITY\SYSTEM / BUILTIN\Administrators tienen rol sysadmin (en imagenes SQL de Azure sin SqlIaaSExtension viene deshabilitado por defecto)
+$isSysAdminRaw = & $sqlcmdExe -S "localhost" -E -C -h -1 -W -b -Q "SET NOCOUNT ON; SELECT IS_SRVROLEMEMBER('sysadmin');"
+if (($isSysAdminRaw | Out-String).Trim() -ne "1") {
+    Write-Host "    Habilitando rol sysadmin para BUILTIN\Administrators y NT AUTHORITY\SYSTEM en instancia local..."
+    Stop-Service -Name "MSSQLSERVER" -Force
+    if (Get-Service -Name "SQLSERVERAGENT" -ErrorAction SilentlyContinue) {
+        Stop-Service -Name "SQLSERVERAGENT" -Force -ErrorAction SilentlyContinue
+    }
+    & net.exe start MSSQLSERVER /mSQLCMD | Out-Null
+    Start-Sleep -Seconds 3
+    $grantSysAdminSql = @"
+IF SUSER_ID('BUILTIN\Administrators') IS NULL
+    CREATE LOGIN [BUILTIN\Administrators] FROM WINDOWS;
+ALTER SERVER ROLE [sysadmin] ADD MEMBER [BUILTIN\Administrators];
+IF SUSER_ID('NT AUTHORITY\SYSTEM') IS NULL
+    CREATE LOGIN [NT AUTHORITY\SYSTEM] FROM WINDOWS;
+ALTER SERVER ROLE [sysadmin] ADD MEMBER [NT AUTHORITY\SYSTEM];
+"@
+    & $sqlcmdExe -S "localhost" -E -C -b -Q $grantSysAdminSql
+    if ($LASTEXITCODE -ne 0) { throw "Error asignando sysadmin en modo single-user." }
+    Stop-Service -Name "MSSQLSERVER" -Force
+    Start-Service -Name "MSSQLSERVER"
+    Start-Sleep -Seconds 5
 }
 
 Write-Host "==> [3/7] Gestionando credenciales únicas de aplicación y laboratorio (sin exposición en consola)..."
