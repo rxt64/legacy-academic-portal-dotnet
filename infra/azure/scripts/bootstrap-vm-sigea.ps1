@@ -292,10 +292,14 @@ if (Get-Website -Name "Default Web Site" -ErrorAction SilentlyContinue) {
 
 $siteName = "SIGEA"
 if (-not (Get-Website -Name $siteName -ErrorAction SilentlyContinue)) {
-    New-Website -Name $siteName -PhysicalPath $SitePhysicalPath -ApplicationPool $appPoolName -Port 80 -IPAddress "127.0.0.1" | Out-Null
+    New-Website -Name $siteName -PhysicalPath $SitePhysicalPath -ApplicationPool $appPoolName -Port 80 -IPAddress "*" | Out-Null
 } else {
     Set-ItemProperty "IIS:\Sites\$siteName" -Name "physicalPath" -Value $SitePhysicalPath
     Set-ItemProperty "IIS:\Sites\$siteName" -Name "applicationPool" -Value $appPoolName
+    Set-WebBinding -Name $siteName -BindingInformation "127.0.0.1:80:" -PropertyName "bindingInformation" -Value "*:80:" -ErrorAction SilentlyContinue
+}
+if (-not (Get-NetFirewallRule -DisplayName "SIGEA-Allow-Inbound-HTTP-80" -ErrorAction SilentlyContinue)) {
+    New-NetFirewallRule -DisplayName "SIGEA-Allow-Inbound-HTTP-80" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow | Out-Null
 }
 Set-ItemProperty "IIS:\Sites\$siteName" -Name "serverAutoStart" -Value $true
 Restart-WebAppPool -Name $appPoolName

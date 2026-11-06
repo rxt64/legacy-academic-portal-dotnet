@@ -81,6 +81,15 @@ param adminPassword string
 @description('Habilitar Key Vault compartido del laboratorio para resguardo de secretos.')
 param enableKeyVault bool = true
 
+@description('Habilitar publicación en Azure Front Door Standard compartido del laboratorio.')
+param enableFrontDoor bool = true
+
+@description('Nombre del perfil compartido de Azure Front Door Standard (vacío usa nombre determinista basado en el grupo de recursos).')
+param frontDoorProfileName string = ''
+
+@description('Nombre del endpoint de Azure Front Door para SIGEA (vacío usa nombre determinista).')
+param sigeaFrontDoorEndpointName string = ''
+
 @description('Tags genéricos aplicados a todos los recursos del laboratorio.')
 param tags object = {
   project: 'legacy-modernization-lab'
@@ -108,6 +117,7 @@ module network 'modules/network.bicep' = {
     geperSubnetPrefix: geperSubnetPrefix
     sigeaNsgName: 'nsg-${sigeaVmName}'
     presenterAllowedCidr: presenterAllowedCidr
+    enableFrontDoorBackend: enableFrontDoor
     tags: tags
   }
 }
@@ -150,6 +160,21 @@ module sigeaVm 'modules/sigea-vm.bicep' = {
   }
 }
 
+var effectiveFrontDoorProfileName = !empty(frontDoorProfileName) ? frontDoorProfileName : 'afd-legacy-lab-${take(uniqueString(rg.id), 8)}'
+var effectiveSigeaEndpointName = !empty(sigeaFrontDoorEndpointName) ? sigeaFrontDoorEndpointName : 'sigea-lab-${take(uniqueString(rg.id), 8)}'
+
+module frontDoor 'modules/frontdoor.bicep' = if (enableFrontDoor && enablePublicIp) {
+  name: 'deploy-shared-frontdoor-sigea'
+  scope: rg
+  params: {
+    frontDoorProfileName: effectiveFrontDoorProfileName
+    sigeaEndpointName: effectiveSigeaEndpointName
+    sigeaOriginHostName: sigeaVm.outputs.publicIpFqdn
+    sigeaOriginHttpPort: 80
+    tags: tags
+  }
+}
+
 output resourceGroupName string = rg.name
 output location string = rg.location
 output vnetName string = network.outputs.vnetName
@@ -161,4 +186,9 @@ output keyVaultName string = enableKeyVault ? keyVault!.outputs.keyVaultName : '
 output sigeaVmName string = sigeaVm.outputs.vmName
 output sigeaPrivateIp string = sigeaVm.outputs.privateIpAddress
 output sigeaPublicIp string = sigeaVm.outputs.publicIpAddress
+output sigeaPublicFqdn string = sigeaVm.outputs.publicIpFqdn
 output sigeaDataDiskId string = sigeaVm.outputs.dataDiskId
+output frontDoorProfileName string = (enableFrontDoor && enablePublicIp) ? frontDoor!.outputs.frontDoorProfileName : ''
+output frontDoorId string = (enableFrontDoor && enablePublicIp) ? frontDoor!.outputs.frontDoorId : ''
+output sigeaFrontDoorEndpointHostName string = (enableFrontDoor && enablePublicIp) ? frontDoor!.outputs.sigeaEndpointHostName : ''
+output sigeaFrontDoorUrl string = (enableFrontDoor && enablePublicIp) ? frontDoor!.outputs.sigeaEndpointUrl : ''

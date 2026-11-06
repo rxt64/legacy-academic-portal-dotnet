@@ -115,6 +115,7 @@ Tres grupos (proyecto `SIGEA.Tests`, xUnit; ejecutar en Windows con
 
 ## 6. Documentación
 
+- [infra/azure/README.md](infra/azure/README.md) — **IaC en Bicep (`mexicocentral`), Azure Front Door y operación del laboratorio en Azure**
 - [docs/architecture.md](docs/architecture.md)
 - [docs/data-dictionary.md](docs/data-dictionary.md)
 - [docs/functional-baseline.md](docs/functional-baseline.md)

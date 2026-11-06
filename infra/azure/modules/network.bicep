@@ -28,6 +28,9 @@ param sigeaNsgName string
 @description('CIDR IPv4 público del presentador para RDP (3389). Vacío deshabilita la regla de entrada RDP. Prohibido 0.0.0.0/0 o *.')
 param presenterAllowedCidr string = ''
 
+@description('Permitir tráfico entrante desde el Service Tag AzureFrontDoor.Backend hacia el puerto 80 de SIGEA.')
+param enableFrontDoorBackend bool = true
+
 @description('Tags de los recursos.')
 param tags object = {}
 
@@ -45,6 +48,23 @@ var rdpAllowRules = hasValidPresenterCidr ? [
       destinationAddressPrefix: '*'
       access: 'Allow'
       priority: 100
+      direction: 'Inbound'
+    }
+  }
+] : []
+
+var frontDoorAllowRules = enableFrontDoorBackend ? [
+  {
+    name: 'Allow-AzureFrontDoor-HTTP-Inbound'
+    properties: {
+      description: 'Permite trafico HTTP entrante exclusivamente desde Azure Front Door (Service Tag AzureFrontDoor.Backend).'
+      protocol: 'Tcp'
+      sourcePortRange: '*'
+      destinationPortRange: '80'
+      sourceAddressPrefix: 'AzureFrontDoor.Backend'
+      destinationAddressPrefix: '*'
+      access: 'Allow'
+      priority: 150
       direction: 'Inbound'
     }
   }
@@ -93,7 +113,7 @@ resource sigeaNsg 'Microsoft.Network/networkSecurityGroups@2023-11-01' = {
   location: location
   tags: tags
   properties: {
-    securityRules: concat(rdpAllowRules, baseDenyRules)
+    securityRules: concat(rdpAllowRules, frontDoorAllowRules, baseDenyRules)
   }
 }
 

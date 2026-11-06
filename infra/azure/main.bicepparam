@@ -24,3 +24,4 @@ param dataDiskSizeGb = 128
 param adminUsername = 'sigeaadmin'
 param adminPassword = readEnvironmentVariable('SIGEA_VM_ADMIN_PASSWORD', '')
 param enableKeyVault = true
+param enableFrontDoor = true

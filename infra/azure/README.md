@@ -16,22 +16,29 @@ flowchart TB
 
             subgraph VNet["VNet Compartida: vnet-legacy-lab-mxc (10.42.0.0/16)"]
                 subgraph SnetSigea["Subred SIGEA: snet-sigea (10.42.1.0/24)"]
-                    NSGSigea["NSG: nsg-vm-sigea-win<br/>RDP 3389 solo CIDR presentador<br/>Deny Web (80/443/8080) y SQL (1433) desde Internet"]
+                    NSGSigea["NSG: nsg-vm-sigea-win<br/>Allow 80 solo desde AzureFrontDoor.Backend (prio 150)<br/>Deny Web (80/443/8080) y SQL (1433) directo desde Internet"]
                     NICSigea["NIC: nic-vm-sigea-win (10.42.1.4)"]
-                    VMSigea["VM: vm-sigea-win (Standard_D4s_v5)<br/>Windows Server 2022 + IIS + .NET 4.8<br/>SQL Server 2022 Developer (127.0.0.1:1433)"]
+                    VMSigea["VM: vm-sigea-win (Standard_D4s_v5)<br/>Windows Server 2022 + IIS (*:80) + .NET 4.8<br/>SQL Server 2022 Developer (127.0.0.1:1433)"]
                     DiskSigea["Disco persistente: disk-vm-sigea-win-sqldata<br/>StandardSSD_LRS 128 GiB (LUN 0 -> F:\MSSQL)"]
                 end
 
                 subgraph SnetGeper["Subred GEPER: snet-geper (10.42.2.0/24) [consumida como existing por GEPER]"]
-                    NSGGeper["NSG: nsg-vm-geper-ora<br/>SSH 22 solo CIDR presentador<br/>Deny Web (80/443/8080) y Oracle (1521) desde Internet"]
+                    NSGGeper["NSG: nsg-vm-geper-ora<br/>Allow 8080 solo desde AzureFrontDoor.Backend (prio 150)<br/>Deny Web (80/443/8080) y Oracle (1521) directo desde Internet"]
                     NICGeper["NIC: nic-vm-geper-ora (10.42.2.4)"]
-                    VMGeper["VM: vm-geper-ora (Standard_D4s_v5)<br/>Oracle Linux 7 + Java 8 + Spring Boot 2.7<br/>Oracle Database 12c R2 12.2.0.1 (127.0.0.1:1521/GEPERPDB)"]
+                    VMGeper["VM: vm-geper-ora (Standard_D4s_v5)<br/>Oracle Linux 7 + Java 8 + Spring Boot 2.7 (0.0.0.0:8080)<br/>Oracle Database 12c R2 12.2.0.1 (127.0.0.1:1521/GEPERPDB)"]
                     DiskGeper["Disco persistente: disk-vm-geper-ora-oradata<br/>StandardSSD_LRS 128 GiB (LUN 0 -> /u02/oradata)"]
                 end
             end
 
-            PIPSigea["IP Pública (opcional): pip-vm-sigea-win"] --> NICSigea
-            PIPGeper["IP Pública (opcional): pip-vm-geper-ora"] --> NICGeper
+            subgraph AFD["Azure Front Door Standard: afd-legacy-lab-* (Global)"]
+                EpSigea["Endpoint SIGEA: sigea-lab-*.b02.azurefd.net<br/>Route /* -> og-sigea (HttpOnly:80, HTTPS Redirect)"]
+                EpGeper["Endpoint GEPER: geper-lab-*.b02.azurefd.net [existing profile]<br/>Route /* -> og-geper (HttpOnly:8080, HTTPS Redirect)"]
+            end
+
+            PIPSigea["IP Pública + FQDN: pip-vm-sigea-win<br/>sigea-vm-*.mexicocentral.cloudapp.azure.com"] --> NICSigea
+            PIPGeper["IP Pública + FQDN: pip-vm-geper-ora<br/>geper-vm-*.mexicocentral.cloudapp.azure.com"] --> NICGeper
+            EpSigea -->|"Service Tag: AzureFrontDoor.Backend (TCP 80)"| PIPSigea
+            EpGeper -->|"Service Tag: AzureFrontDoor.Backend (TCP 8080)"| PIPGeper
             NSGSigea --> SnetSigea
             NICSigea --> VMSigea
             DiskSigea --> VMSigea
@@ -41,8 +48,9 @@ flowchart TB
         end
     end
 
-    Presenter["Presentador (IPv4 verificada /32)"] -. "RDP autenticado (3389)<br/>Navegador local -> http://localhost/" .-> PIPSigea
-    Presenter -. "Túnel SSH autenticado (22)<br/>localhost:8080 -> 127.0.0.1:8080" .-> PIPGeper
+    Users["Usuarios / Presentador (HTTPS 443)"] ==> EpSigea
+    Users ==> EpGeper
+    Presenter["Presentador (IPv4 verificada /32)"] -. "RDP (3389) / SSH (22) para administración y labs locales" .-> PIPSigea
 ```
 
 ---
@@ -56,7 +64,8 @@ flowchart TB
 | [`main.bicep`](./main.bicep) | `subscription` | Punto de entrada principal. Crea el grupo de recursos `rg-legacy-apps-demo-mxc` en `mexicocentral` e invoca los módulos de red, Key Vault y cómputo de SIGEA. |
 | [`modules/network.bicep`](./modules/network.bicep) | `resourceGroup` | Crea la VNet compartida `vnet-legacy-lab-mxc` (`10.42.0.0/16`), las subredes `snet-sigea` (`10.42.1.0/24`) y `snet-geper` (`10.42.2.0/24`), y el `nsg-vm-sigea-win` sin reglas abiertas a `0.0.0.0/0` y con bloqueo explícito de puertos web/SQL desde Internet. |
 | [`modules/keyvault.bicep`](./modules/keyvault.bicep) | `resourceGroup` | Crea un Azure Key Vault opcional (`kv-legacylabb-*`) con autorización RBAC y *soft-delete* para resguardo opcional de secretos de operación. |
-| [`modules/sigea-vm.bicep`](./modules/sigea-vm.bicep) | `resourceGroup` | Crea la IP pública estática opcional (`pip-vm-sigea-win`), la interfaz de red (`nic-vm-sigea-win`), el disco administrado persistente para SQL Server (`disk-vm-sigea-win-sqldata`, LUN 0, `deleteOption: 'Detach'`) y la máquina virtual `vm-sigea-win` con identidad administrada `SystemAssigned`. |
+| [`modules/sigea-vm.bicep`](./modules/sigea-vm.bicep) | `resourceGroup` | Crea la IP pública estática con etiqueta DNS (`pip-vm-sigea-win`, `sigea-vm-*.mexicocentral.cloudapp.azure.com`), la interfaz de red (`nic-vm-sigea-win`), el disco administrado persistente para SQL Server (`disk-vm-sigea-win-sqldata`, LUN 0, `deleteOption: 'Detach'`) y la máquina virtual `vm-sigea-win` con identidad administrada `SystemAssigned`. |
+| [`modules/frontdoor.bicep`](./modules/frontdoor.bicep) | `resourceGroup` | Crea el perfil compartido de **Azure Front Door Standard** (`Microsoft.Cdn/profiles@2024-02-01`, `afd-legacy-lab-*`), el endpoint HTTPS de SIGEA (`sigea-lab-*`), el grupo de origen `og-sigea` con afinidad de sesión y sondas de salud `GET /`, el origen `origin-sigea-vm` (puerto 80) y la ruta `route-sigea-default` con redirección automática HTTP -> HTTPS. |
 | [`main.bicepparam`](./main.bicepparam) | `subscription` | Archivo de parámetros de ejemplo sin secretos ni IPs privadas; lee `SIGEA_VM_ADMIN_PASSWORD` desde variable de entorno. |
 
 ### 2.2 Parámetros principales de `main.bicep`
@@ -82,6 +91,9 @@ flowchart TB
 | `adminUsername` | `string` | `'sigeaadmin'` | Usuario administrador local de Windows. |
 | `adminPassword` | `string` (`@secure()`) | *(requerido)* | Contraseña del administrador local; nunca se expone en outputs. |
 | `enableKeyVault` | `bool` | `true` | Despliega el Key Vault compartido del laboratorio. |
+| `enableFrontDoor` | `bool` | `true` | Despliega el perfil compartido de Azure Front Door Standard, el endpoint HTTPS de SIGEA y la regla NSG `Allow-AzureFrontDoor-HTTP-Inbound` (Service Tag `AzureFrontDoor.Backend`). |
+| `frontDoorProfileName` | `string` | `''` | Nombre personalizado opcional para el perfil de Azure Front Door (vacío genera `afd-legacy-lab-<hash>`). |
+| `sigeaFrontDoorEndpointName` | `string` | `''` | Nombre personalizado opcional para el endpoint de SIGEA (vacío genera `sigea-lab-<hash>`). |
 | `tags` | `object` | `{ project: 'legacy-modernization-lab', ... }` | Etiquetas aplicadas a todos los recursos. |
 
 ---
@@ -112,6 +124,7 @@ flowchart TB
 | `resourceGroupName` | `existingResourceGroupName` | `rg-legacy-apps-demo-mxc` |
 | `vnetName` | `existingVnetName` | `vnet-legacy-lab-mxc` |
 | `geperSubnetName` | `existingSubnetName` | `snet-geper` |
+| `frontDoorProfileName` | `existingFrontDoorProfileName` | `afd-legacy-lab-<hash>` (calculado con el mismo `uniqueString(rg.id)`) |
 
 ---
 
@@ -187,18 +200,23 @@ El script [`scripts/bootstrap-vm-sigea.ps1`](./scripts/bootstrap-vm-sigea.ps1) c
 
 ---
 
-## 8. Acceso del presentador y activación temporal de los laboratorios de seguridad
+## 8. Publicación en Azure Front Door, acceso del presentador y laboratorios de seguridad
 
-- **Acceso normal del presentador:**
+- **Acceso público HTTPS mediante Azure Front Door Standard:**
+  - La aplicación normal de SIGEA se publica en el endpoint HTTPS generado por `frontDoor.outputs.sigeaEndpointUrl` (ej. `https://sigea-lab-<hash>-<hash>.b02.azurefd.net/`).
+  - Azure Front Door termina TLS en el borde, redirige automáticamente `http://` -> `https://` (`307 Temporary Redirect`), mantiene afinidad de sesión (`sessionAffinityState: 'Enabled'`) para el estado `InProc` de ASP.NET MVC 5 y reenvía el tráfico hacia el origen `sigea-vm-*.mexicocentral.cloudapp.azure.com:80`.
+  - **Protección de origen (sin exposición directa de la VM):** El NSG `nsg-vm-sigea-win` incluye la regla `Allow-AzureFrontDoor-HTTP-Inbound` (prioridad `150`, origen `AzureFrontDoor.Backend`, puerto `80`) seguida de `Deny-Internet-Web-Inbound` (prioridad `200`, origen `Internet`, puertos `80, 443, 8080`). Cualquier intento de conectarse directamente a `http://<IP_PUBLICA_SIGEA>:80` sin pasar por Azure Front Door es bloqueado por el NSG.
+  - **Aislamiento estricto de los laboratorios vulnerables (`/Lab`):** Las rutas `/Lab` y `/Lab/Sqli` devuelven **`404 Not Found`** a través de Azure Front Door. Además de desplegarse con `ENABLE_VULNERABILITY_LABS=false`, `LabGate.IsEnabled` comprueba `Request.IsLocal` sobre el socket TCP (sin confiar en `X-Forwarded-For`), por lo que los ejercicios de vulnerabilidades **jamás pueden ser invocados a través de Azure Front Door** incluso cuando el presentador los habilita temporalmente dentro de la VM.
+- **Acceso administrativo del presentador (RDP) para los ejercicios de seguridad en localhost:**
   1. Autorice su IPv4 pública `/32` en `presenterAllowedCidr` mediante Bicep (`./infra/azure/scripts/manage-lab.ps1 -Action Deploy -PresenterAllowedCidr "<MI_IP>/32"`).
   2. Conéctese por RDP a `vm-sigea-win` (`mstsc /v:<IP_PUBLICA_SIGEA>`) con el usuario `sigeaadmin`.
   3. Dentro de la VM, abra Microsoft Edge en **`http://localhost/`** (o `http://127.0.0.1/`).
-- **Activar temporalmente los laboratorios de seguridad (`DOTNET-SQLI-01` y `DOTNET-IDOR-01`) por localhost:**
+- **Activar temporalmente los laboratorios de seguridad (`DOTNET-SQLI-01` y `DOTNET-IDOR-01`) solo por localhost:**
   Dentro de la VM (PowerShell como Administrador):
   ```powershell
   powershell.exe -ExecutionPolicy Bypass -File C:\SIGEA\stage\scripts\set-lab-mode-sigea.ps1 -Enable $true
   ```
-  Navegue en `http://localhost/Lab` (aparecerá la banda *"Laboratorio vulnerable activo · Datos ficticios"*).
+  Navegue dentro de la VM a `http://localhost/Lab` (aparecerá la banda *"Laboratorio vulnerable activo · Datos ficticios"*).
 - **Desactivar los laboratorios inmediatamente después del ejercicio:**
   ```powershell
   powershell.exe -ExecutionPolicy Bypass -File C:\SIGEA\stage\scripts\set-lab-mode-sigea.ps1 -Enable $false
@@ -244,6 +262,7 @@ El script [`scripts/bootstrap-vm-sigea.ps1`](./scripts/bootstrap-vm-sigea.ps1) c
 | VM GEPER (`vm-geper-ora`) | `Standard_D4s_v5` (Linux, 4 vCPU, 16 GiB RAM) | $0.211 / hora (~$154.03 / mes a 730 h) | **No** ($0.00 cómputo al estar `VM deallocated`) |
 | Discos de SO y datos (4 × 128 GiB) | `StandardSSD_LRS` (`E10`, 128 GiB c/u: 2 en SIGEA + 2 en GEPER) | ~$11.56 / mes por disco (~$46.24 / mes total) | **Sí** (los discos administrados persisten mientras no se eliminen) |
 | IP Públicas Estáticas (2 × Standard) | `Standard` IPv4 Static (`pip-vm-sigea-win`, `pip-vm-geper-ora`) | ~$0.01 / hora c/u (~$7.30 / mes c/u) | **Sí** (las IP estáticas Standard continúan facturando mientras existan) |
+| Azure Front Door Standard (compartido) | `Standard_AzureFrontDoor` (`afd-legacy-lab-*` con 2 endpoints: SIGEA y GEPER) | $35.00 / mes base + $0.01 / 10K peticiones | **Sí** (la cuota base mensual del perfil Front Door continúa activa hasta eliminar el perfil) |
 | Key Vault + VNet + NSG | Standard Key Vault / Virtual Network | < $0.05 / mes (solo por operaciones KV) | Mínimo (solo operaciones) |
 
 ---
