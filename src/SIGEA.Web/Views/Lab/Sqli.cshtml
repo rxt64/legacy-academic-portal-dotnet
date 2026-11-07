@@ -1,18 +1,19 @@
 @using SIGEA.Web.DAL
 @{ ViewBag.Title = "Lab SQLi"; ViewBag.Active = "lab"; }
-<h1 class="page">SECURITY-LAB DOTNET-SQLI-01 — Inyección SQL</h1>
-<p>Búsqueda de estudiantes por apellido. El término se concatena directamente en el SQL y se ejecuta con
-   <code>SqlCommand</code> contra la conexión de solo lectura <code>sigea_labro</code>.</p>
+<h1 class="page">SECURITY-LAB DOTNET-SQLI-01 — Inyección SQL (remediada)</h1>
+<p>Búsqueda de estudiantes por apellido. El término se vincula mediante un parámetro
+   <code>SqlParameter (@@term)</code> y se ejecuta con <code>SqlCommand</code> contra la conexión de
+   solo lectura <code>sigea_labro</code>. El texto nunca se concatena en el SQL.</p>
 <form method="get" action="@Url.Action("Sqli")" class="toolbar">
     <label style="min-width:auto">Apellido contiene</label>
     <input type="text" name="term" value="@ViewBag.Term" size="40" />
     <input type="submit" value="Buscar" />
 </form>
 <p class="muted">Reproducción inocua: <code>mora</code> (filtra a 2) y luego <code>x%' OR '1'='1' --</code>
-   (amplía a todo el padrón). Sin modificar datos.</p>
+   (tratado como literal: 0 resultados, ya no amplía la búsqueda). Sin modificar datos.</p>
 @if (ViewBag.Sql != null)
 {
-    <h2 class="sec">SQL enviado a SQL Server</h2>
+    <h2 class="sec">SQL enviado a SQL Server (parametrizado)</h2>
     <code class="sql">@ViewBag.Sql</code>
 }
 @if (ViewBag.Rows != null)
@@ -27,3 +28,4 @@
         }
     </table>
 }
+

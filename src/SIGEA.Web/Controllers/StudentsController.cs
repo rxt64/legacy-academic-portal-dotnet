@@ -1,6 +1,6 @@
 using System.Linq;
 using System.Net;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using SIGEA.Web.DAL;
 using SIGEA.Web.Models;
 
@@ -9,11 +9,17 @@ namespace SIGEA.Web.Controllers
     /// <summary>
     /// Student management. The academic search here is PARAMETERIZED via
     /// LINQ-to-Entities (the user term becomes a bound SQL parameter). The
-    /// deliberately unsafe search lives only in LabController (DOTNET-SQLI-01).
+    /// deliberately unsafe search lived only in LabController (DOTNET-SQLI-01),
+    /// which has since been remediated.
     /// </summary>
     public class StudentsController : Controller
     {
-        private readonly SchoolContext db = new SchoolContext();
+        private readonly SchoolContext db;
+
+        public StudentsController(SchoolContext db)
+        {
+            this.db = db;
+        }
 
         public ActionResult Index(string searchString)
         {
@@ -30,9 +36,9 @@ namespace SIGEA.Web.Controllers
 
         public ActionResult Details(int? id)
         {
-            if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            if (id == null) return new StatusCodeResult((int)HttpStatusCode.BadRequest);
             var student = db.Students.Find(id);
-            if (student == null) return HttpNotFound();
+            if (student == null) return NotFound();
             return View(student);
         }
 
@@ -42,7 +48,7 @@ namespace SIGEA.Web.Controllers
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public ActionResult Create([Bind(Include = "LastName,FirstName,Email,EnrollmentDate")] Student student)
+        public ActionResult Create([Bind("LastName,FirstName,Email,EnrollmentDate")] Student student)
         {
             if (ModelState.IsValid)
             {
@@ -55,18 +61,18 @@ namespace SIGEA.Web.Controllers
 
         public ActionResult Edit(int? id)
         {
-            if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            if (id == null) return new StatusCodeResult((int)HttpStatusCode.BadRequest);
             var student = db.Students.Find(id);
-            if (student == null) return HttpNotFound();
+            if (student == null) return NotFound();
             return View(student);
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public ActionResult Edit([Bind(Include = "ID,LastName,FirstName,Email,EnrollmentDate")] Student student)
+        public ActionResult Edit([Bind("ID,LastName,FirstName,Email,EnrollmentDate")] Student student)
         {
             if (ModelState.IsValid)
             {
-                db.Entry(student).State = System.Data.Entity.EntityState.Modified;
+                db.Entry(student).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
                 db.SaveChanges();
                 return RedirectToAction("Details", new { id = student.ID });
             }
@@ -75,9 +81,9 @@ namespace SIGEA.Web.Controllers
 
         public ActionResult Delete(int? id)
         {
-            if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            if (id == null) return new StatusCodeResult((int)HttpStatusCode.BadRequest);
             var student = db.Students.Find(id);
-            if (student == null) return HttpNotFound();
+            if (student == null) return NotFound();
             return View(student);
         }
 
@@ -94,12 +100,6 @@ namespace SIGEA.Web.Controllers
                 db.SaveChanges();
             }
             return RedirectToAction("Index");
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing) db.Dispose();
-            base.Dispose(disposing);
         }
     }
 }

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Tasks template for modernization plan. Generate this file alongside plan.md to track individual migration tasks.",
+  "tasks": [
+    {
+      "type": "transform",
+      "id": "001-transform-mvc5-to-aspnetcore-net10",
+      "description": "Upgrade SIGEA from ASP.NET MVC 5 (.NET Framework 4.8) and Entity Framework 6 to ASP.NET Core MVC on .NET 10 with EF Core, remediate the DOTNET-SQLI-01 SQL injection and DOTNET-IDOR-01 insecure direct object reference vulnerabilities, and configure Managed Identity authentication against Azure SQL Managed Instance.",
+      "reason": "The application runs on an out-of-support ASP.NET MVC 5 / .NET Framework 4.8 / EF6 stack that cannot use modern Azure SDK packages, and contains two intentional lab vulnerabilities (unparameterized SQL query and missing transcript ownership check) that must be fixed before cloud deployment.",
+      "requirements": "Convert SIGEA.Web and SIGEA.Tests to SDK-style projects targeting net10.0 (Microsoft.NET.Sdk.Web / Microsoft.NET.Sdk), replacing packages.config with PackageReference. Migrate the EF6 SchoolContext to EF Core, preserving the existing Table-Per-Hierarchy Person/Student/Instructor model, the CourseAssignment many-to-many join, and the OfficeAssignment shared-primary-key relationship. Replace System.Web.HttpContext.Session usage with ASP.NET Core ISession. Fix DOTNET-SQLI-01 in src/SIGEA.Web/DAL/LabQueries.cs by replacing string-concatenated SQL with a parameterized SqlCommand. Fix DOTNET-IDOR-01 in src/SIGEA.Web/Controllers/LabController.cs by enforcing an object-level ownership check so a student can only access their own transcript, consistent with TranscriptController.Details. Configure appsettings.json connection strings to authenticate to Azure SQL Managed Instance using Managed Identity (Authentication=Active Directory Managed Identity) instead of SQL username/password. Do not change unrelated business logic or existing passing behavior.",
+      "dependencies": [],
+      "status": "started",
+      "skills": [
+        {
+          "name": "sigea-mvc5-to-aspnetcore-net10",
+          "location": "project"
+        }
+      ],
+      "successCriteria": {
+        "passBuild": "true",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "security",
+      "id": "002-security-cve-remediation",
+      "description": "Scan all project dependencies for known CVEs and remediate any identified vulnerabilities to ensure the application is secure before deployment. Addresses issues: SQL database connection detected, Connection strings without configuration builders detected.",
+      "reason": "Ensure the modernized .NET 10 / EF Core dependency set is free of known vulnerabilities before containerization and deployment.",
+      "requirements": "Upgrade vulnerable dependencies to the minimum patched version. If a CVE fix requires a major version upgrade, document the affected dependency, the current version, the upgraded major version, and the breaking change risk. Verify that the project builds and all tests pass after remediation.",
+      "dependencies": ["001-transform-mvc5-to-aspnetcore-net10"],
+      "status": "skipped",
+      "taskSummary": "Skipped per explicit user instruction to execute only task 001.",
+      "skills": [
+        {
+          "name": "validate-cves-and-fix",
+          "location": "builtin"
+        }
+      ],
+      "successCriteria": {
+        "passBuild": "true",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "deployment",
+      "id": "003-deployment-azure-container-apps",
+      "description": "Containerize SIGEA.Web and deploy it to Azure Container Apps using the existing infrastructure definitions in infra/azure.",
+      "reason": "The user requested containerization for Azure Container Apps as the hosting target for the modernized application.",
+      "requirements": "Create a multi-stage Dockerfile for SIGEA.Web (build with mcr.microsoft.com/dotnet/sdk:10.0, run with mcr.microsoft.com/dotnet/aspnet:10.0) listening on port 8080 as a non-root user. Build and push the container image, then deploy to the existing Azure Container Apps resources defined under infra/azure using azd/az CLI. Ensure the Container App's managed identity is used for Azure SQL Managed Instance authentication (no secrets or connection string passwords).",
+      "dependencies": ["001-transform-mvc5-to-aspnetcore-net10", "002-security-cve-remediation"],
+      "status": "skipped",
+      "taskSummary": "Skipped per explicit user instruction to execute only task 001.",
+      "targetAzureService": "azurecontainerapp",
+      "resourceStatus": "Existing infrastructure already defined in infra/azure (main.bicep); reuse rather than provision new resources.",
+      "deploymentTool": "bicep",
+      "skills": [
+        {
+          "name": "azcli-containerapp-deploy",
+          "location": "builtin"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "planName": "sigea-net10-sqlmi-aca",
+    "projectName": "SIGEA",
+    "language": "dotnet",
+    "createdAt": "2026-11-06T22:59:00Z",
+    "version": "1.0"
+  }
+}

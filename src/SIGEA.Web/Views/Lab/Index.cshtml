@@ -1,9 +1,9 @@
 @{ ViewBag.Title = "Laboratorio"; ViewBag.Active = "lab"; }
-<h1 class="page">Laboratorio de vulnerabilidades (solo local)</h1>
+<h1 class="page">Laboratorio de vulnerabilidades (remediado, solo local)</h1>
 <p>Estas rutas existen únicamente porque <code>ENABLE_VULNERABILITY_LABS=true</code> y la petición llega por loopback.
-   Usan solo datos sintéticos.</p>
+   Usan solo datos sintéticos. Ambas vulnerabilidades de demostración fueron remediadas durante la modernización.</p>
 <ul>
-    <li><a href="@Url.Action("Sqli")">SECURITY-LAB DOTNET-SQLI-01</a> — Inyección SQL en búsqueda académica (concatenación + SqlCommand, cuenta de solo lectura).</li>
-    <li><a href="@Url.Action("Transcript")">SECURITY-LAB DOTNET-IDOR-01</a> — Falta de autorización por objeto en el expediente (requiere iniciar sesión en <a href="@Url.Action("Login","Account")">Mi expediente</a>).</li>
+    <li><a href="@Url.Action("Sqli")">SECURITY-LAB DOTNET-SQLI-01 (remediada)</a> — Búsqueda académica parametrizada (SqlParameter + SqlCommand, cuenta de solo lectura).</li>
+    <li><a href="@Url.Action("Transcript")">SECURITY-LAB DOTNET-IDOR-01 (remediada)</a> — Verificación de propiedad por objeto en el expediente (requiere iniciar sesión en <a href="@Url.Action("Login","Account")">Mi expediente</a>).</li>
 </ul>
 <p class="muted">Procedimientos en <code>docs/security-labs.md</code>.</p>

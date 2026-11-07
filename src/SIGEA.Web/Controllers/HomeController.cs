@@ -1,5 +1,5 @@
 using System.Linq;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using SIGEA.Web.DAL;
 using SIGEA.Web.Models;
 
@@ -7,7 +7,12 @@ namespace SIGEA.Web.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly SchoolContext db = new SchoolContext();
+        private readonly SchoolContext db;
+
+        public HomeController(SchoolContext db)
+        {
+            this.db = db;
+        }
 
         /// <summary>Dashboard. Every indicator is computed in SQL Server (LINQ-to-Entities aggregates).</summary>
         public ActionResult Index()
@@ -20,7 +25,7 @@ namespace SIGEA.Web.Controllers
                 DepartmentCount = db.Departments.Count(),
                 EnrollmentCount = db.Enrollments.Count(),
                 GradedCount = db.Enrollments.Count(e => e.Grade != null),
-                AverageGrade = db.Enrollments.Where(e => e.Grade != null).Average(e => e.Grade),
+                AverageGrade = db.Enrollments.Where(e => e.Grade != null).Average(e => (decimal?)e.Grade),
                 TotalBudget = db.Departments.Sum(d => (decimal?)d.Budget) ?? 0m,
                 Departments = db.Departments
                     .Select(d => new DepartmentSummary
@@ -37,10 +42,10 @@ namespace SIGEA.Web.Controllers
             return View(vm);
         }
 
-        protected override void Dispose(bool disposing)
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public ActionResult Error()
         {
-            if (disposing) db.Dispose();
-            base.Dispose(disposing);
+            return View();
         }
     }
 }

@@ -1,6 +1,8 @@
 @using SIGEA.Web.Infrastructure
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@inject LabGate LabGate
 @{
-    var portalTitle = System.Configuration.ConfigurationManager.AppSettings["PortalTitle"]
+    var portalTitle = Configuration["PortalTitle"]
                       ?? "SIGEA — Portal Académico Interno v2.4";
     var labsOn = LabGate.LabsConfigured;
     string active = ViewBag.Active as string;

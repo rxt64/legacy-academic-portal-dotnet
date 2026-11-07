@@ -1,4 +1,4 @@
-using System.Web;
+using Microsoft.AspNetCore.Http;
 
 namespace SIGEA.Web.Infrastructure
 {
@@ -13,29 +13,28 @@ namespace SIGEA.Web.Infrastructure
         public const string StudentIdKey = "StudentID";
         public const string StudentNameKey = "StudentName";
 
-        public static int? GetStudentId(HttpContextBase ctx)
+        public static int? GetStudentId(HttpContext ctx)
         {
-            var v = ctx?.Session?[StudentIdKey];
-            return v == null ? (int?)null : (int)v;
+            return ctx?.Session?.GetInt32(StudentIdKey);
         }
 
-        public static string GetStudentName(HttpContextBase ctx)
+        public static string GetStudentName(HttpContext ctx)
         {
-            return ctx?.Session?[StudentNameKey] as string;
+            return ctx?.Session?.GetString(StudentNameKey);
         }
 
-        public static bool IsAuthenticated(HttpContextBase ctx)
+        public static bool IsAuthenticated(HttpContext ctx)
         {
             return GetStudentId(ctx).HasValue;
         }
 
-        public static void SignIn(HttpContextBase ctx, int studentId, string studentName)
+        public static void SignIn(HttpContext ctx, int studentId, string studentName)
         {
-            ctx.Session[StudentIdKey] = studentId;
-            ctx.Session[StudentNameKey] = studentName;
+            ctx.Session.SetInt32(StudentIdKey, studentId);
+            ctx.Session.SetString(StudentNameKey, studentName ?? string.Empty);
         }
 
-        public static void SignOut(HttpContextBase ctx)
+        public static void SignOut(HttpContext ctx)
         {
             ctx.Session.Remove(StudentIdKey);
             ctx.Session.Remove(StudentNameKey);

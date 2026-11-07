@@ -1,7 +1,7 @@
-using System.Data.Entity;
 using System.Linq;
 using System.Net;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using SIGEA.Web.DAL;
 using SIGEA.Web.Models;
 
@@ -9,7 +9,12 @@ namespace SIGEA.Web.Controllers
 {
     public class InstructorsController : Controller
     {
-        private readonly SchoolContext db = new SchoolContext();
+        private readonly SchoolContext db;
+
+        public InstructorsController(SchoolContext db)
+        {
+            this.db = db;
+        }
 
         public ActionResult Index()
         {
@@ -22,11 +27,11 @@ namespace SIGEA.Web.Controllers
 
         public ActionResult Details(int? id)
         {
-            if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            if (id == null) return new StatusCodeResult((int)HttpStatusCode.BadRequest);
             var instructor = db.People.OfType<Instructor>()
                 .Include(i => i.OfficeAssignment).Include(i => i.Courses)
                 .FirstOrDefault(i => i.ID == id);
-            if (instructor == null) return HttpNotFound();
+            if (instructor == null) return NotFound();
             return View(instructor);
         }
 
@@ -36,7 +41,7 @@ namespace SIGEA.Web.Controllers
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public ActionResult Create([Bind(Include = "LastName,FirstName,Email,HireDate")] Instructor instructor)
+        public ActionResult Create([Bind("LastName,FirstName,Email,HireDate")] Instructor instructor)
         {
             if (ModelState.IsValid)
             {
@@ -49,14 +54,14 @@ namespace SIGEA.Web.Controllers
 
         public ActionResult Edit(int? id)
         {
-            if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            if (id == null) return new StatusCodeResult((int)HttpStatusCode.BadRequest);
             var instructor = db.Instructors.Find(id);
-            if (instructor == null) return HttpNotFound();
+            if (instructor == null) return NotFound();
             return View(instructor);
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public ActionResult Edit([Bind(Include = "ID,LastName,FirstName,Email,HireDate")] Instructor instructor)
+        public ActionResult Edit([Bind("ID,LastName,FirstName,Email,HireDate")] Instructor instructor)
         {
             if (ModelState.IsValid)
             {
@@ -69,9 +74,9 @@ namespace SIGEA.Web.Controllers
 
         public ActionResult Delete(int? id)
         {
-            if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            if (id == null) return new StatusCodeResult((int)HttpStatusCode.BadRequest);
             var instructor = db.Instructors.Find(id);
-            if (instructor == null) return HttpNotFound();
+            if (instructor == null) return NotFound();
             return View(instructor);
         }
 
@@ -85,12 +90,6 @@ namespace SIGEA.Web.Controllers
                 db.SaveChanges();
             }
             return RedirectToAction("Index");
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing) db.Dispose();
-            base.Dispose(disposing);
         }
     }
 }

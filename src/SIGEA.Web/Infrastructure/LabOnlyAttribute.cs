@@ -1,4 +1,5 @@
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace SIGEA.Web.Infrastructure
 {
@@ -12,10 +13,10 @@ namespace SIGEA.Web.Infrastructure
     {
         public override void OnActionExecuting(ActionExecutingContext filterContext)
         {
-            var request = filterContext.HttpContext.Request;
-            if (!LabGate.IsEnabled(request))
+            var labGate = (LabGate)filterContext.HttpContext.RequestServices.GetService(typeof(LabGate));
+            if (labGate == null || !labGate.IsEnabled(filterContext.HttpContext.Request))
             {
-                filterContext.Result = new HttpNotFoundResult();
+                filterContext.Result = new NotFoundResult();
             }
         }
     }

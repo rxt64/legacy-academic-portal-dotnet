@@ -1,7 +1,8 @@
-using System.Data.Entity;
 using System.Linq;
 using System.Net;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using SIGEA.Web.DAL;
 using SIGEA.Web.Models;
 
@@ -10,7 +11,12 @@ namespace SIGEA.Web.Controllers
     /// <summary>Enrollments and grades (matrículas y calificaciones).</summary>
     public class EnrollmentsController : Controller
     {
-        private readonly SchoolContext db = new SchoolContext();
+        private readonly SchoolContext db;
+
+        public EnrollmentsController(SchoolContext db)
+        {
+            this.db = db;
+        }
 
         public ActionResult Index(int? courseId)
         {
@@ -28,7 +34,7 @@ namespace SIGEA.Web.Controllers
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public ActionResult Create([Bind(Include = "CourseID,StudentID,Grade")] Enrollment enrollment)
+        public ActionResult Create([Bind("CourseID,StudentID,Grade")] Enrollment enrollment)
         {
             if (ModelState.IsValid)
             {
@@ -42,15 +48,15 @@ namespace SIGEA.Web.Controllers
 
         public ActionResult Edit(int? id)
         {
-            if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            if (id == null) return new StatusCodeResult((int)HttpStatusCode.BadRequest);
             var enrollment = db.Enrollments.Include(e => e.Course).Include(e => e.Student)
                 .FirstOrDefault(e => e.EnrollmentID == id);
-            if (enrollment == null) return HttpNotFound();
+            if (enrollment == null) return NotFound();
             return View(enrollment);
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public ActionResult Edit([Bind(Include = "EnrollmentID,CourseID,StudentID,Grade")] Enrollment enrollment)
+        public ActionResult Edit([Bind("EnrollmentID,CourseID,StudentID,Grade")] Enrollment enrollment)
         {
             if (ModelState.IsValid)
             {
@@ -63,10 +69,10 @@ namespace SIGEA.Web.Controllers
 
         public ActionResult Delete(int? id)
         {
-            if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            if (id == null) return new StatusCodeResult((int)HttpStatusCode.BadRequest);
             var enrollment = db.Enrollments.Include(e => e.Course).Include(e => e.Student)
                 .FirstOrDefault(e => e.EnrollmentID == id);
-            if (enrollment == null) return HttpNotFound();
+            if (enrollment == null) return NotFound();
             return View(enrollment);
         }
 
@@ -87,12 +93,6 @@ namespace SIGEA.Web.Controllers
             ViewBag.CourseID = new SelectList(db.Courses.OrderBy(c => c.Title), "CourseID", "Title", course);
             ViewBag.StudentID = new SelectList(
                 db.People.OfType<Student>().OrderBy(s => s.LastName), "ID", "FullName", student);
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing) db.Dispose();
-            base.Dispose(disposing);
         }
     }
 }

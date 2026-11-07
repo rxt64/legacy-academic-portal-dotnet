@@ -1,5 +1,5 @@
 using System.Linq;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using SIGEA.Web.DAL;
 using SIGEA.Web.Infrastructure;
 using SIGEA.Web.Models;
@@ -15,7 +15,12 @@ namespace SIGEA.Web.Controllers
     /// </summary>
     public class AccountController : Controller
     {
-        private readonly SchoolContext db = new SchoolContext();
+        private readonly SchoolContext db;
+
+        public AccountController(SchoolContext db)
+        {
+            this.db = db;
+        }
 
         [HttpGet]
         public ActionResult Login()
@@ -42,12 +47,6 @@ namespace SIGEA.Web.Controllers
         {
             SessionUser.SignOut(HttpContext);
             return RedirectToAction("Login");
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing) db.Dispose();
-            base.Dispose(disposing);
         }
     }
 }

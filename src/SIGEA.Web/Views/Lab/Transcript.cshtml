@@ -1,10 +1,10 @@
 @model SIGEA.Web.Models.TranscriptViewModel
 @{ ViewBag.Title = "Lab IDOR"; ViewBag.Active = "lab"; }
-<h1 class="page">SECURITY-LAB DOTNET-IDOR-01 — Expediente sin verificación de propiedad</h1>
+<h1 class="page">SECURITY-LAB DOTNET-IDOR-01 — Verificación de propiedad (remediada)</h1>
 <div class="msg-mono">Sesión autenticada como estudiante #@ViewBag.SessionStudentId. Expediente mostrado: #@Model.StudentID (@Model.StudentName).</div>
-<p class="muted">Cambie el parámetro <code>id</code> en la URL (p. ej. <code>?id=7</code> y <code>?id=8</code>) para ver el expediente de otro estudiante.
-   Esta ruta NO comprueba que el expediente pertenezca al usuario autenticado. La ruta normal
-   <code>@Url.Action("Details","Transcript", new { id = ViewBag.SessionStudentId })</code> sí lo comprueba (devuelve 403 si no es el dueño).</p>
+<p class="muted">Esta ruta ahora exige que <code>id</code> coincida con el estudiante autenticado en sesión,
+   igual que la ruta normal <code>@Url.Action("Details","Transcript", new { id = ViewBag.SessionStudentId })</code>.
+   Solicitar el expediente de otro estudiante (p. ej. <code>?id=8</code> estando autenticado como el #7) devuelve 403.</p>
 <table class="grid">
     <tr><th>Curso</th><th class="right">Créditos</th><th class="right">Calificación</th></tr>
     @foreach (var l in Model.Lines)
@@ -14,6 +14,6 @@
 </table>
 <p>Promedio (GPA): <b>@(Model.Gpa.HasValue ? Model.Gpa.Value.ToString("0.00") : "-")</b></p>
 <div class="toolbar">
-    <a class="btn" href="@Url.Action("Transcript", new { id = 7 })">Ver id=7</a>
-    <a class="btn" href="@Url.Action("Transcript", new { id = 8 })">Ver id=8</a>
+    <a class="btn" href="@Url.Action("Transcript", new { id = ViewBag.SessionStudentId })">Ver mi propio expediente</a>
 </div>
+

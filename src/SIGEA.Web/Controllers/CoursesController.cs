@@ -1,7 +1,8 @@
-using System.Data.Entity;
 using System.Linq;
 using System.Net;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using SIGEA.Web.DAL;
 using SIGEA.Web.Models;
 
@@ -9,7 +10,12 @@ namespace SIGEA.Web.Controllers
 {
     public class CoursesController : Controller
     {
-        private readonly SchoolContext db = new SchoolContext();
+        private readonly SchoolContext db;
+
+        public CoursesController(SchoolContext db)
+        {
+            this.db = db;
+        }
 
         public ActionResult Index()
         {
@@ -20,10 +26,10 @@ namespace SIGEA.Web.Controllers
 
         public ActionResult Details(int? id)
         {
-            if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            if (id == null) return new StatusCodeResult((int)HttpStatusCode.BadRequest);
             var course = db.Courses.Include(c => c.Department).Include(c => c.Instructors)
                 .FirstOrDefault(c => c.CourseID == id);
-            if (course == null) return HttpNotFound();
+            if (course == null) return NotFound();
             return View(course);
         }
 
@@ -34,7 +40,7 @@ namespace SIGEA.Web.Controllers
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public ActionResult Create([Bind(Include = "CourseID,Title,Credits,DepartmentID")] Course course)
+        public ActionResult Create([Bind("CourseID,Title,Credits,DepartmentID")] Course course)
         {
             if (ModelState.IsValid)
             {
@@ -48,15 +54,15 @@ namespace SIGEA.Web.Controllers
 
         public ActionResult Edit(int? id)
         {
-            if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            if (id == null) return new StatusCodeResult((int)HttpStatusCode.BadRequest);
             var course = db.Courses.Find(id);
-            if (course == null) return HttpNotFound();
+            if (course == null) return NotFound();
             PopulateDepartments(course.DepartmentID);
             return View(course);
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public ActionResult Edit([Bind(Include = "CourseID,Title,Credits,DepartmentID")] Course course)
+        public ActionResult Edit([Bind("CourseID,Title,Credits,DepartmentID")] Course course)
         {
             if (ModelState.IsValid)
             {
@@ -70,9 +76,9 @@ namespace SIGEA.Web.Controllers
 
         public ActionResult Delete(int? id)
         {
-            if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            if (id == null) return new StatusCodeResult((int)HttpStatusCode.BadRequest);
             var course = db.Courses.Include(c => c.Department).FirstOrDefault(c => c.CourseID == id);
-            if (course == null) return HttpNotFound();
+            if (course == null) return NotFound();
             return View(course);
         }
 
@@ -94,12 +100,6 @@ namespace SIGEA.Web.Controllers
         {
             ViewBag.DepartmentID = new SelectList(
                 db.Departments.OrderBy(d => d.Name), "DepartmentID", "Name", selected);
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing) db.Dispose();
-            base.Dispose(disposing);
         }
     }
 }

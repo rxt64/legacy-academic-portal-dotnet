@@ -1,7 +1,8 @@
-using System.Data.Entity;
 using System.Linq;
 using System.Net;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using SIGEA.Web.DAL;
 using SIGEA.Web.Models;
 
@@ -9,7 +10,12 @@ namespace SIGEA.Web.Controllers
 {
     public class DepartmentsController : Controller
     {
-        private readonly SchoolContext db = new SchoolContext();
+        private readonly SchoolContext db;
+
+        public DepartmentsController(SchoolContext db)
+        {
+            this.db = db;
+        }
 
         public ActionResult Index()
         {
@@ -20,10 +26,10 @@ namespace SIGEA.Web.Controllers
 
         public ActionResult Details(int? id)
         {
-            if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            if (id == null) return new StatusCodeResult((int)HttpStatusCode.BadRequest);
             var department = db.Departments.Include(d => d.Administrator).Include(d => d.Courses)
                 .FirstOrDefault(d => d.DepartmentID == id);
-            if (department == null) return HttpNotFound();
+            if (department == null) return NotFound();
             return View(department);
         }
 
@@ -34,7 +40,7 @@ namespace SIGEA.Web.Controllers
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public ActionResult Create([Bind(Include = "Name,Budget,StartDate,InstructorID")] Department department)
+        public ActionResult Create([Bind("Name,Budget,StartDate,InstructorID")] Department department)
         {
             if (ModelState.IsValid)
             {
@@ -48,15 +54,15 @@ namespace SIGEA.Web.Controllers
 
         public ActionResult Edit(int? id)
         {
-            if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            if (id == null) return new StatusCodeResult((int)HttpStatusCode.BadRequest);
             var department = db.Departments.Find(id);
-            if (department == null) return HttpNotFound();
+            if (department == null) return NotFound();
             PopulateAdministrators(department.InstructorID);
             return View(department);
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public ActionResult Edit([Bind(Include = "DepartmentID,Name,Budget,StartDate,InstructorID")] Department department)
+        public ActionResult Edit([Bind("DepartmentID,Name,Budget,StartDate,InstructorID")] Department department)
         {
             if (ModelState.IsValid)
             {
@@ -70,9 +76,9 @@ namespace SIGEA.Web.Controllers
 
         public ActionResult Delete(int? id)
         {
-            if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            if (id == null) return new StatusCodeResult((int)HttpStatusCode.BadRequest);
             var department = db.Departments.Include(d => d.Administrator).FirstOrDefault(d => d.DepartmentID == id);
-            if (department == null) return HttpNotFound();
+            if (department == null) return NotFound();
             return View(department);
         }
 
@@ -96,12 +102,6 @@ namespace SIGEA.Web.Controllers
             ViewBag.InstructorID = new SelectList(
                 db.People.OfType<Instructor>().OrderBy(i => i.LastName),
                 "ID", "FullName", selected);
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing) db.Dispose();
-            base.Dispose(disposing);
         }
     }
 }
