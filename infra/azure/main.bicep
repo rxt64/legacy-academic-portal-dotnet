@@ -90,6 +90,25 @@ param frontDoorProfileName string = ''
 @description('Nombre del endpoint de Azure Front Door para SIGEA (vacío usa nombre determinista).')
 param sigeaFrontDoorEndpointName string = ''
 
+@description('Aprovisionar destino de migración Azure SQL Managed Instance + Blob Storage privado en Mexico Central.')
+param enableSqlMiMigrationTarget bool = true
+
+@description('Login del administrador SQL de Azure SQL Managed Instance.')
+param sqlMiAdminLogin string = 'sigeamiadmin'
+
+@description('Contraseña del administrador SQL de Azure SQL Managed Instance (si está vacía reutiliza adminPassword).')
+@secure()
+param sqlMiAdminPassword string = ''
+
+@description('UPN del administrador Microsoft Entra para Azure SQL Managed Instance (opcional).')
+param sqlMiEntraAdminLogin string = ''
+
+@description('Object ID (SID) del administrador Microsoft Entra para Azure SQL Managed Instance (opcional).')
+param sqlMiEntraAdminObjectId string = ''
+
+@description('Aprovisionar entorno destino compartido de Azure Container Apps y Azure Container Registry en Mexico Central.')
+param enableAcaTarget bool = true
+
 @description('Tags genéricos aplicados a todos los recursos del laboratorio.')
 param tags object = {
   project: 'legacy-modernization-lab'
@@ -175,6 +194,40 @@ module frontDoor 'modules/frontdoor.bicep' = if (enableFrontDoor && enablePublic
   }
 }
 
+module sqlMiMigration 'modules/sqlmi-migration.bicep' = if (enableSqlMiMigrationTarget) {
+  name: 'deploy-sigea-sqlmi-migration'
+  scope: rg
+  params: {
+    location: location
+    storageAccountName: 'stsigeamig${take(uniqueString(rg.id), 8)}'
+    backupContainerName: 'sqlbackups'
+    sqlManagedInstanceName: 'sqlmi-sigea-mxc3-${take(uniqueString(rg.id), 8)}'
+    sqlMiSubnetId: network.outputs.sqlMiSubnetId
+    sqlMiAdminLogin: sqlMiAdminLogin
+    sqlMiAdminPassword: !empty(sqlMiAdminPassword) ? sqlMiAdminPassword : adminPassword
+    sigeaVmPrincipalId: sigeaVm.outputs.principalId
+    vnetId: network.outputs.vnetId
+    privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+    entraAdminLogin: sqlMiEntraAdminLogin
+    entraAdminObjectId: sqlMiEntraAdminObjectId
+    tags: tags
+  }
+}
+
+module acaTarget 'modules/aca-target.bicep' = if (enableAcaTarget) {
+  name: 'deploy-shared-aca-target'
+  scope: rg
+  params: {
+    location: location
+    acrName: 'acrlegacylabb${take(uniqueString(rg.id), 8)}'
+    logAnalyticsName: 'law-legacy-modern-${take(uniqueString(rg.id), 8)}'
+    containerAppsEnvironmentName: 'cae-legacy-modern-mxc'
+    acaSubnetId: network.outputs.acaSubnetId
+    sigeaModernIdentityName: 'id-sigea-modern-aca'
+    tags: tags
+  }
+}
+
 output resourceGroupName string = rg.name
 output location string = rg.location
 output vnetName string = network.outputs.vnetName
@@ -182,6 +235,9 @@ output vnetId string = network.outputs.vnetId
 output sigeaSubnetName string = network.outputs.sigeaSubnetName
 output geperSubnetName string = network.outputs.geperSubnetName
 output geperSubnetId string = network.outputs.geperSubnetId
+output sqlMiSubnetName string = network.outputs.sqlMiSubnetName
+output acaSubnetName string = network.outputs.acaSubnetName
+output privateEndpointSubnetName string = network.outputs.privateEndpointSubnetName
 output keyVaultName string = enableKeyVault ? keyVault!.outputs.keyVaultName : ''
 output sigeaVmName string = sigeaVm.outputs.vmName
 output sigeaPrivateIp string = sigeaVm.outputs.privateIpAddress
@@ -192,3 +248,13 @@ output frontDoorProfileName string = (enableFrontDoor && enablePublicIp) ? front
 output frontDoorId string = (enableFrontDoor && enablePublicIp) ? frontDoor!.outputs.frontDoorId : ''
 output sigeaFrontDoorEndpointHostName string = (enableFrontDoor && enablePublicIp) ? frontDoor!.outputs.sigeaEndpointHostName : ''
 output sigeaFrontDoorUrl string = (enableFrontDoor && enablePublicIp) ? frontDoor!.outputs.sigeaEndpointUrl : ''
+output migrationStorageAccountName string = enableSqlMiMigrationTarget ? sqlMiMigration!.outputs.storageAccountName : ''
+output migrationBackupContainerUrl string = enableSqlMiMigrationTarget ? sqlMiMigration!.outputs.backupContainerUrl : ''
+output sqlManagedInstanceName string = enableSqlMiMigrationTarget ? sqlMiMigration!.outputs.sqlManagedInstanceName : ''
+output sqlManagedInstanceFqdn string = enableSqlMiMigrationTarget ? sqlMiMigration!.outputs.sqlManagedInstanceFqdn : ''
+output acrName string = enableAcaTarget ? acaTarget!.outputs.acrName : ''
+output acrLoginServer string = enableAcaTarget ? acaTarget!.outputs.acrLoginServer : ''
+output containerAppsEnvironmentName string = enableAcaTarget ? acaTarget!.outputs.containerAppsEnvironmentName : ''
+output containerAppsDefaultDomain string = enableAcaTarget ? acaTarget!.outputs.containerAppsDefaultDomain : ''
+output sigeaModernIdentityName string = enableAcaTarget ? acaTarget!.outputs.sigeaModernIdentityName : ''
+output sigeaModernIdentityClientId string = enableAcaTarget ? acaTarget!.outputs.sigeaModernIdentityClientId : ''

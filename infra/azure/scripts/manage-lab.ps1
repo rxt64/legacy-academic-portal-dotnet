@@ -14,7 +14,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('Validate', 'Deploy', 'Start', 'Deallocate', 'ResetDataset', 'Teardown')]
+    [ValidateSet('Validate', 'Deploy', 'Start', 'Deallocate', 'ResetDataset', 'TeardownTargetsOnly', 'Teardown')]
     [string]$Action,
 
     [string]$SubscriptionId = $env:AZURE_SUBSCRIPTION_ID,
@@ -85,6 +85,32 @@ switch ($Action) {
             --command-id RunPowerShellScript `
             --scripts "powershell.exe -ExecutionPolicy Bypass -File C:\SIGEA\stage\scripts\reset-dataset-sigea.ps1 -Mode Full" `
             --query "value[0].message" -o tsv
+    }
+    'TeardownTargetsOnly' {
+        if (-not $ConfirmTeardown) {
+            throw "Para eliminar los recursos destino de modernización debe especificar explícitamente -ConfirmTeardown."
+        }
+        Write-Host "==> Eliminando selectivamente solo los recursos destino de modernización de SIGEA (conservando VM legacy, discos y Front Door)..."
+        $sqlMis = az sql mi list --resource-group $ResourceGroupName --query "[].name" -o tsv
+        foreach ($mi in $sqlMis) {
+            if ($mi) { az sql mi delete --resource-group $ResourceGroupName --name $mi --yes --no-wait }
+        }
+        $acrs = az acr list --resource-group $ResourceGroupName --query "[].name" -o tsv
+        foreach ($acr in $acrs) {
+            if ($acr) { az acr delete --resource-group $ResourceGroupName --name $acr --yes }
+        }
+        $caes = az containerapp env list --resource-group $ResourceGroupName --query "[].name" -o tsv
+        foreach ($cae in $caes) {
+            if ($cae) { az containerapp env delete --resource-group $ResourceGroupName --name $cae --yes --no-wait }
+        }
+        $stgs = az storage account list --resource-group $ResourceGroupName --query "[?starts_with(name, 'stsigeamig')].name" -o tsv
+        foreach ($st in $stgs) {
+            if ($st) {
+                az network private-endpoint delete --resource-group $ResourceGroupName --name "pe-$st-blob" 2>$null
+                az storage account delete --resource-group $ResourceGroupName --name $st --yes
+            }
+        }
+        az identity delete --resource-group $ResourceGroupName --name "id-sigea-modern-aca" 2>$null
     }
     'Teardown' {
         if (-not $ConfirmTeardown) {

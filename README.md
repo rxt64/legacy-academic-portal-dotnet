@@ -115,6 +115,7 @@ Tres grupos (proyecto `SIGEA.Tests`, xUnit; ejecutar en Windows con
 
 ## 6. Documentación
 
+- [docs/live-modernization-and-sqlmi-runbook.md](docs/live-modernization-and-sqlmi-runbook.md) — **Runbook en vivo (60 min): GitHub Copilot Modernization Agent + Migración SQL Server 2022 → Azure SQL Managed Instance (10–15 min)**
 - [infra/azure/README.md](infra/azure/README.md) — **IaC en Bicep (`mexicocentral`), Azure Front Door y operación del laboratorio en Azure**
 - [docs/architecture.md](docs/architecture.md)
 - [docs/data-dictionary.md](docs/data-dictionary.md)

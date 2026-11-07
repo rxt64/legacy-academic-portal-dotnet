@@ -66,6 +66,8 @@ flowchart TB
 | [`modules/keyvault.bicep`](./modules/keyvault.bicep) | `resourceGroup` | Crea un Azure Key Vault opcional (`kv-legacylabb-*`) con autorización RBAC y *soft-delete* para resguardo opcional de secretos de operación. |
 | [`modules/sigea-vm.bicep`](./modules/sigea-vm.bicep) | `resourceGroup` | Crea la IP pública estática con etiqueta DNS (`pip-vm-sigea-win`, `sigea-vm-*.mexicocentral.cloudapp.azure.com`), la interfaz de red (`nic-vm-sigea-win`), el disco administrado persistente para SQL Server (`disk-vm-sigea-win-sqldata`, LUN 0, `deleteOption: 'Detach'`) y la máquina virtual `vm-sigea-win` con identidad administrada `SystemAssigned`. |
 | [`modules/frontdoor.bicep`](./modules/frontdoor.bicep) | `resourceGroup` | Crea el perfil compartido de **Azure Front Door Standard** (`Microsoft.Cdn/profiles@2024-02-01`, `afd-legacy-lab-*`), el endpoint HTTPS de SIGEA (`sigea-lab-*`), el grupo de origen `og-sigea` con afinidad de sesión y sondas de salud `GET /`, el origen `origin-sigea-vm` (puerto 80) y la ruta `route-sigea-default` con redirección automática HTTP -> HTTPS. |
+| [`modules/sqlmi-migration.bicep`](./modules/sqlmi-migration.bicep) | `resourceGroup` | Crea la cuenta privada de Azure Blob Storage (`stsigeamig*`, contenedor `sqlbackups`) con Private Endpoint (`10.42.6.4`), asignaciones RBAC `Storage Blob Data Contributor` y la instancia destino de **Azure SQL Managed Instance** (`sqlmi-sigea-mxc3-*`, `GP_Gen5` 4 vCores, `databaseFormat: AlwaysUpToDate`, `azureADOnlyAuthentication: true`) en la subred delegada `snet-sqlmi` (`10.42.3.0/26`). |
+| [`modules/aca-target.bicep`](./modules/aca-target.bicep) | `resourceGroup` | Crea el registro compartido **Azure Container Registry** (`acrlegacylabb*`), el área de Log Analytics (`law-legacy-modern-*`), el entorno administrado de **Azure Container Apps** (`cae-legacy-modern-mxc` integrado en `snet-aca` `10.42.4.0/23`) y la identidad administrada `id-sigea-modern-aca` con rol `AcrPull`. |
 | [`main.bicepparam`](./main.bicepparam) | `subscription` | Archivo de parámetros de ejemplo sin secretos ni IPs privadas; lee `SIGEA_VM_ADMIN_PASSWORD` desde variable de entorno. |
 
 ### 2.2 Parámetros principales de `main.bicep`
@@ -250,19 +252,25 @@ El script [`scripts/bootstrap-vm-sigea.ps1`](./scripts/bootstrap-vm-sigea.ps1) c
 # Desasignar la VM al terminar la sesión (detiene el cobro por cómputo)
 ./infra/azure/scripts/manage-lab.ps1 -Action Deallocate -SubscriptionId "<SUBSCRIPTION_ID>"
 
+# Eliminar selectivamente SOLO los recursos destino de modernización (conservando VMs legacy y Front Door)
+./infra/azure/scripts/manage-lab.ps1 -Action TeardownTargetsOnly -SubscriptionId "<SUBSCRIPTION_ID>" -ConfirmTeardown
+
 # Eliminar exclusivamente el laboratorio completo cuando ya no se necesite
 ./infra/azure/scripts/manage-lab.ps1 -Action Teardown -SubscriptionId "<SUBSCRIPTION_ID>" -ConfirmTeardown
 ```
 
 ### 10.2 Estimación de costos en `mexicocentral` (precios minoristas Azure, USD, Consumption)
 
-| Recurso | SKU / Configuración | Costo en ejecución (USD) | ¿Sigue facturándose al desasignar (`Deallocate`)? |
+| Recurso | SKU / Configuración | Costo en ejecución (USD) | ¿Sigue facturándose al desasignar (`Deallocate`) las VMs? |
 |---|---|---|---|
 | VM SIGEA (`vm-sigea-win`) | `Standard_D4s_v5` (Windows, 4 vCPU, 16 GiB RAM) | $0.395 / hora (~$288.35 / mes a 730 h) | **No** ($0.00 cómputo al estar `VM deallocated`) |
 | VM GEPER (`vm-geper-ora`) | `Standard_D4s_v5` (Linux, 4 vCPU, 16 GiB RAM) | $0.211 / hora (~$154.03 / mes a 730 h) | **No** ($0.00 cómputo al estar `VM deallocated`) |
 | Discos de SO y datos (4 × 128 GiB) | `StandardSSD_LRS` (`E10`, 128 GiB c/u: 2 en SIGEA + 2 en GEPER) | ~$11.56 / mes por disco (~$46.24 / mes total) | **Sí** (los discos administrados persisten mientras no se eliminen) |
 | IP Públicas Estáticas (2 × Standard) | `Standard` IPv4 Static (`pip-vm-sigea-win`, `pip-vm-geper-ora`) | ~$0.01 / hora c/u (~$7.30 / mes c/u) | **Sí** (las IP estáticas Standard continúan facturando mientras existan) |
 | Azure Front Door Standard (compartido) | `Standard_AzureFrontDoor` (`afd-legacy-lab-*` con 2 endpoints: SIGEA y GEPER) | $35.00 / mes base + $0.01 / 10K peticiones | **Sí** (la cuota base mensual del perfil Front Door continúa activa hasta eliminar el perfil) |
+| **Destino SIGEA:** Azure SQL Managed Instance | `GP_Gen5` (4 vCores, 32 GB LRS, `LicenseIncluded`, `sqlmi-sigea-mxc3-*`) | ~$0.918 / hora (~$670.48 / mes a 730 h) | **Sí** (mientras la instancia no se detenga o elimine con `TeardownTargetsOnly`) |
+| **Destino GEPER:** Azure Database for PostgreSQL | `Standard_B2s` Burstable (2 vCores, 4 GiB RAM, 32 GiB storage, `pg-geper-*`) | ~$0.068 / hora cómputo + ~$4.54 / mes storage (~$54.18 / mes) | **Sí** (puede detenerse con `az postgres flexible-server stop` o eliminarse con `TeardownTargetsOnly`) |
+| **Destino Compartido:** ACR + ACA Environment + Storage + Private Endpoints | `Basic` ACR (`~$5.00/mes`) + `Consumption` ACA Env (`$0.00` sin réplicas activas) + `Standard_LRS` Blob + 2 Private Endpoints (`~$7.30/mes c/u`) | ~$19.80 / mes | **Sí** (hasta ejecutar `TeardownTargetsOnly`) |
 | Key Vault + VNet + NSG | Standard Key Vault / Virtual Network | < $0.05 / mes (solo por operaciones KV) | Mínimo (solo operaciones) |
 
 ---
