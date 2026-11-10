@@ -248,10 +248,10 @@ $webConfigPath = Join-Path $SitePhysicalPath "Web.config"
 
 foreach ($add in $xml.configuration.connectionStrings.add) {
     if ($add.name -eq "SchoolContext") {
-        $add.connectionString = "Server=127.0.0.1;Database=SIGEA;User Id=sigea_app;Password=$($credObj.sigeaAppPassword);TrustServerCertificate=True;MultipleActiveResultSets=True"
+        $add.connectionString = "Server=127.0.0.1;Database=SIGEA;User Id=sigea_app;Password=$($credObj.sigeaAppPassword);TrustServerCertificate=True;MultipleActiveResultSets=True;ConnectRetryCount=6;ConnectRetryInterval=10;Connection Timeout=60"
     }
     elseif ($add.name -eq "LabReadOnlyContext") {
-        $add.connectionString = "Server=127.0.0.1;Database=SIGEA;User Id=sigea_labro;Password=$($credObj.sigeaLabPassword);TrustServerCertificate=True"
+        $add.connectionString = "Server=127.0.0.1;Database=SIGEA;User Id=sigea_labro;Password=$($credObj.sigeaLabPassword);TrustServerCertificate=True;ConnectRetryCount=6;ConnectRetryInterval=10;Connection Timeout=60"
     }
 }
 
@@ -302,6 +302,10 @@ if (-not (Get-NetFirewallRule -DisplayName "SIGEA-Allow-Inbound-HTTP-80" -ErrorA
     New-NetFirewallRule -DisplayName "SIGEA-Allow-Inbound-HTTP-80" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow | Out-Null
 }
 Set-ItemProperty "IIS:\Sites\$siteName" -Name "serverAutoStart" -Value $true
+Set-ItemProperty "IIS:\Sites\$siteName" -Name "applicationDefaults.preloadEnabled" -Value $true -ErrorAction SilentlyContinue
+& sc.exe config W3SVC depend= WAS/RpcSs/MSSQLSERVER | Out-Null
+& sc.exe failure MSSQLSERVER reset= 86400 actions= restart/5000/restart/5000/restart/5000 | Out-Null
+& sc.exe failure W3SVC reset= 86400 actions= restart/5000/restart/5000/restart/5000 | Out-Null
 Restart-WebAppPool -Name $appPoolName
 Start-Website -Name $siteName
 

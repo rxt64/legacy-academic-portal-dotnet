@@ -70,8 +70,23 @@ switch ($Action) {
             --query "{provisioningState:properties.provisioningState, outputs:properties.outputs}" -o json
     }
     'Start' {
+        Write-Host "==> Verificando SKU de discos administrados de $VmName (restaurando StandardSSD_LRS si una política de gobernanza los degradó a Standard_LRS al desasignar)..."
+        foreach ($dName in @("osdisk-$VmName", "disk-$VmName-sqldata")) {
+            $sku = az disk show --resource-group $ResourceGroupName --name $dName --query "sku.name" -o tsv 2>$null
+            if ($sku -eq "Standard_LRS") {
+                Write-Host "    Restaurando $dName de Standard_LRS a StandardSSD_LRS..."
+                az disk update --resource-group $ResourceGroupName --name $dName --sku StandardSSD_LRS | Out-Null
+            }
+        }
         Write-Host "==> Iniciando VM $VmName en $ResourceGroupName..."
         az vm start --resource-group $ResourceGroupName --name $VmName
+        $sqlMis = az sql mi list --resource-group $ResourceGroupName --query "[?state=='Stopped'].name" -o tsv 2>$null
+        foreach ($mi in $sqlMis) {
+            if ($mi) {
+                Write-Host "==> Iniciando Azure SQL Managed Instance $mi..."
+                az sql mi start --resource-group $ResourceGroupName --name $mi --no-wait 2>$null
+            }
+        }
     }
     'Deallocate' {
         Write-Host "==> Desasignando VM $VmName en $ResourceGroupName (detiene cargos de cómputo)..."
