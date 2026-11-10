@@ -70,16 +70,17 @@ switch ($Action) {
             --query "{provisioningState:properties.provisioningState, outputs:properties.outputs}" -o json
     }
     'Start' {
-        Write-Host "==> Verificando SKU de discos administrados de $VmName (restaurando StandardSSD_LRS si una política de gobernanza los degradó a Standard_LRS al desasignar)..."
-        foreach ($dName in @("osdisk-$VmName", "disk-$VmName-sqldata")) {
+        Write-Host "==> Verificando SKU de discos administrados de $VmName y vm-jumpbox-lab (restaurando StandardSSD_LRS si una política de gobernanza los degradó a Standard_LRS al desasignar)..."
+        foreach ($dName in @("osdisk-$VmName", "disk-$VmName-sqldata", "vm-jumpbox-lab-osdisk")) {
             $sku = az disk show --resource-group $ResourceGroupName --name $dName --query "sku.name" -o tsv 2>$null
             if ($sku -eq "Standard_LRS") {
                 Write-Host "    Restaurando $dName de Standard_LRS a StandardSSD_LRS..."
                 az disk update --resource-group $ResourceGroupName --name $dName --sku StandardSSD_LRS | Out-Null
             }
         }
-        Write-Host "==> Iniciando VM $VmName en $ResourceGroupName..."
+        Write-Host "==> Iniciando VM $VmName y vm-jumpbox-lab en $ResourceGroupName..."
         az vm start --resource-group $ResourceGroupName --name $VmName
+        az vm start --resource-group $ResourceGroupName --name "vm-jumpbox-lab" 2>$null
         $sqlMis = az sql mi list --resource-group $ResourceGroupName --query "[?state=='Stopped'].name" -o tsv 2>$null
         foreach ($mi in $sqlMis) {
             if ($mi) {
@@ -89,8 +90,9 @@ switch ($Action) {
         }
     }
     'Deallocate' {
-        Write-Host "==> Desasignando VM $VmName en $ResourceGroupName (detiene cargos de cómputo)..."
+        Write-Host "==> Desasignando VM $VmName y vm-jumpbox-lab en $ResourceGroupName (detiene cargos de cómputo)..."
         az vm deallocate --resource-group $ResourceGroupName --name $VmName
+        az vm deallocate --resource-group $ResourceGroupName --name "vm-jumpbox-lab" 2>$null
     }
     'ResetDataset' {
         Write-Host "==> Restableciendo dataset sintético de SIGEA en $VmName..."

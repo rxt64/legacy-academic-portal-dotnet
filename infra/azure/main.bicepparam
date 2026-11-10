@@ -27,3 +27,4 @@ param enableKeyVault = true
 param enableFrontDoor = true
 param enableSqlMiMigrationTarget = true
 param enableAcaTarget = true
+param enableBastionJumpbox = true

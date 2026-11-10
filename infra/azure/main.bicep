@@ -109,6 +109,15 @@ param sqlMiEntraAdminObjectId string = ''
 @description('Aprovisionar entorno destino compartido de Azure Container Apps y Azure Container Registry en Mexico Central.')
 param enableAcaTarget bool = true
 
+@description('Aprovisionar Azure Bastion y VM puente (Jumpbox Windows Server 2022) para ejecutar los laboratorios de seguridad de forma aislada.')
+param enableBastionJumpbox bool = true
+
+@description('Nombre de la máquina virtual puente (Jumpbox).')
+param jumpboxVmName string = 'vm-jumpbox-lab'
+
+@description('Usuario administrador local de la VM puente.')
+param jumpboxAdminUsername string = 'jumpboxadmin'
+
 @description('Tags genéricos aplicados a todos los recursos del laboratorio.')
 param tags object = {
   project: 'legacy-modernization-lab'
@@ -228,6 +237,19 @@ module acaTarget 'modules/aca-target.bicep' = if (enableAcaTarget) {
   }
 }
 
+module bastionJumpbox 'modules/bastion-jumpbox.bicep' = if (enableBastionJumpbox) {
+  name: 'deploy-bastion-jumpbox'
+  scope: rg
+  params: {
+    location: location
+    vnetName: network.outputs.vnetName
+    jumpboxVmName: jumpboxVmName
+    adminUsername: jumpboxAdminUsername
+    adminPassword: adminPassword
+    tags: tags
+  }
+}
+
 output resourceGroupName string = rg.name
 output location string = rg.location
 output vnetName string = network.outputs.vnetName
@@ -258,3 +280,6 @@ output containerAppsEnvironmentName string = enableAcaTarget ? acaTarget!.output
 output containerAppsDefaultDomain string = enableAcaTarget ? acaTarget!.outputs.containerAppsDefaultDomain : ''
 output sigeaModernIdentityName string = enableAcaTarget ? acaTarget!.outputs.sigeaModernIdentityName : ''
 output sigeaModernIdentityClientId string = enableAcaTarget ? acaTarget!.outputs.sigeaModernIdentityClientId : ''
+output bastionName string = enableBastionJumpbox ? bastionJumpbox!.outputs.bastionName : ''
+output jumpboxVmName string = enableBastionJumpbox ? bastionJumpbox!.outputs.jumpboxVmName : ''
+output jumpboxPrivateIp string = enableBastionJumpbox ? bastionJumpbox!.outputs.jumpboxPrivateIp : ''
