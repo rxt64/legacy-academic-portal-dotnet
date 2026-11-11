@@ -11,7 +11,8 @@ param(
 
     [string]$SqlMiHostName = "",
     [string]$TargetDatabaseName = "SIGEA",
-    [string]$AppPoolName = "SigeaAppPool"
+    [string]$AppPoolName = "SigeaAppPool",
+    [string]$AccessToken = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -42,8 +43,12 @@ switch ($Action) {
         & $sqlcmdExe -S "localhost" -d "SIGEA" -E -C -b -W -Q $validationQuery
         if (-not [string]::IsNullOrWhiteSpace($SqlMiHostName)) {
             Write-Host "==> Consultando métricas en Azure SQL Managed Instance Destino ($SqlMiHostName/$TargetDatabaseName)..."
-            $imdsSqlUrl = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://database.windows.net/"
-            $sqlAccessToken = (Invoke-RestMethod -Uri $imdsSqlUrl -Headers @{ Metadata = "true" } -Method GET).access_token
+            if (-not [string]::IsNullOrWhiteSpace($AccessToken)) {
+                $sqlAccessToken = $AccessToken
+            } else {
+                $imdsSqlUrl = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://database.windows.net/"
+                $sqlAccessToken = (Invoke-RestMethod -Uri $imdsSqlUrl -Headers @{ Metadata = "true" } -Method GET).access_token
+            }
             $conn = New-Object System.Data.SqlClient.SqlConnection("Server=tcp:${SqlMiHostName},1433;Database=${TargetDatabaseName};Encrypt=True;TrustServerCertificate=False;")
             $conn.AccessToken = $sqlAccessToken
             $conn.Open()
@@ -53,7 +58,9 @@ switch ($Action) {
                 $adapter = New-Object System.Data.SqlClient.SqlDataAdapter($cmd)
                 $dt = New-Object System.Data.DataTable
                 [void]$adapter.Fill($dt)
-                $dt | Format-Table -AutoSize
+                foreach ($row in $dt.Rows) {
+                    Write-Host "StudentCount=$($row.StudentCount) | InstructorCount=$($row.InstructorCount) | CourseCount=$($row.CourseCount) | DepartmentCount=$($row.DepartmentCount) | EnrollmentCount=$($row.EnrollmentCount) | GradedCount=$($row.GradedCount) | OfficeCount=$($row.OfficeCount) | CourseAssignCount=$($row.CourseAssignCount) | TotalBudget=$($row.TotalBudget) | AvgGrade=$($row.AvgGrade) | OrphanCourses=$($row.OrphanCourses) | OrphanEnrollments=$($row.OrphanEnrollments) | WitnessPresent=$($row.WitnessPresent)"
+                }
             } finally {
                 $conn.Close()
             }

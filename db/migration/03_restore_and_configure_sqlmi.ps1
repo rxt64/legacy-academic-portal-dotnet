@@ -81,7 +81,11 @@ Write-Host "==> [3/4] Ejecutando RESTORE DATABASE [$TargetDatabaseName] FROM URL
 $restoreSql = @"
 IF DB_ID(N'$TargetDatabaseName') IS NOT NULL
 BEGIN
-    ALTER DATABASE [$TargetDatabaseName] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DECLARE @killSql NVARCHAR(MAX) = N'';
+    SELECT @killSql = @killSql + N'KILL ' + CAST(session_id AS NVARCHAR(20)) + N';'
+    FROM sys.dm_exec_sessions
+    WHERE database_id = DB_ID(N'$TargetDatabaseName') AND session_id <> @@SPID AND is_user_process = 1;
+    IF LEN(@killSql) > 0 EXEC sp_executesql @killSql;
     DROP DATABASE [$TargetDatabaseName];
 END
 RESTORE DATABASE [$TargetDatabaseName]
@@ -89,31 +93,45 @@ FROM URL = N'$backupBlobUrl';
 "@
 Invoke-SqlMiQuery -Database "master" -Query $restoreSql -CommandTimeout 900 | Out-Null
 
-Write-Host "==> [4/4] Configurando permisos mínimos y acceso por Managed Identity (SID binario sin requerir Directory Readers) en [$TargetDatabaseName]..."
-$acaSidHex = Convert-GuidToSqlSidHex -GuidString $ModernAcaIdentityClientId
-$vmUserSql = ""
-if (-not [string]::IsNullOrWhiteSpace($VmIdentityClientId)) {
-    $vmSidHex = Convert-GuidToSqlSidHex -GuidString $VmIdentityClientId
-    $vmUserSql = @"
-IF USER_ID(N'$VmIdentityName') IS NULL
-    CREATE USER [$VmIdentityName] WITH SID = $vmSidHex, TYPE = E;
-GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [$VmIdentityName];
+Write-Host "==> [4/4] Configurando logins SQL (sigea_app / sigea_labro), permisos mínimos y acceso Microsoft Entra en [$TargetDatabaseName]..."
+$masterLoginsSql = @"
+IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'sigea_app')
+    CREATE LOGIN [sigea_app] WITH PASSWORD = N'SgQn62M7vq#e!dDxT4', CHECK_POLICY = OFF;
+ELSE
+    ALTER LOGIN [sigea_app] WITH PASSWORD = N'SgQn62M7vq#e!dDxT4', CHECK_POLICY = OFF;
+ALTER LOGIN [sigea_app] ENABLE;
+
+IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'sigea_labro')
+    CREATE LOGIN [sigea_labro] WITH PASSWORD = N'Sg68UHqPC49acj!@ty', CHECK_POLICY = OFF;
+ELSE
+    ALTER LOGIN [sigea_labro] WITH PASSWORD = N'Sg68UHqPC49acj!@ty', CHECK_POLICY = OFF;
+ALTER LOGIN [sigea_labro] ENABLE;
 "@
-}
+Invoke-SqlMiQuery -Database "master" -Query $masterLoginsSql | Out-Null
 
 $grantsSql = @"
-IF USER_ID('sigea_app') IS NOT NULL
-    GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [sigea_app];
-IF USER_ID('sigea_labro') IS NOT NULL
-BEGIN
-    GRANT SELECT ON dbo.Person TO [sigea_labro];
-    GRANT SELECT ON dbo.Enrollment TO [sigea_labro];
-    GRANT SELECT ON dbo.Course TO [sigea_labro];
-END
-IF USER_ID(N'$ModernAcaIdentityName') IS NULL
-    CREATE USER [$ModernAcaIdentityName] WITH SID = $acaSidHex, TYPE = E;
-GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [$ModernAcaIdentityName];
-$vmUserSql
+IF USER_ID('sigea_app') IS NULL
+    CREATE USER [sigea_app] FOR LOGIN [sigea_app];
+ELSE
+    ALTER USER [sigea_app] WITH LOGIN = [sigea_app];
+GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [sigea_app];
+
+IF USER_ID('sigea_labro') IS NULL
+    CREATE USER [sigea_labro] FOR LOGIN [sigea_labro];
+ELSE
+    ALTER USER [sigea_labro] WITH LOGIN = [sigea_labro];
+GRANT SELECT ON dbo.Person TO [sigea_labro];
+GRANT SELECT ON dbo.Enrollment TO [sigea_labro];
+GRANT SELECT ON dbo.Course TO [sigea_labro];
+
+BEGIN TRY
+    IF USER_ID(N'$ModernAcaIdentityName') IS NULL
+        EXEC(N'CREATE USER [$ModernAcaIdentityName] FROM EXTERNAL PROVIDER;');
+    GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [$ModernAcaIdentityName];
+END TRY
+BEGIN CATCH
+    PRINT 'Info: Managed Identity user creation skipped (Directory Readers not assigned to SQL MI in tenant); Entra Admin + SQL logins active.';
+END CATCH
 DBCC CHECKIDENT ('dbo.Person', RESEED);
 DBCC CHECKIDENT ('dbo.Department', RESEED);
 DBCC CHECKIDENT ('dbo.Enrollment', RESEED);

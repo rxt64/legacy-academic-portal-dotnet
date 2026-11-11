@@ -71,7 +71,7 @@ switch ($Action) {
     }
     'Start' {
         Write-Host "==> Verificando SKU de discos administrados de $VmName y vm-jumpbox-lab (restaurando StandardSSD_LRS si una política de gobernanza los degradó a Standard_LRS al desasignar)..."
-        foreach ($dName in @("osdisk-$VmName", "disk-$VmName-sqldata", "vm-jumpbox-lab-osdisk")) {
+        foreach ($dName in @("osdisk-$VmName", "disk-$VmName-sqldata", "osdisk-vm-jumpbox-lab")) {
             $sku = az disk show --resource-group $ResourceGroupName --name $dName --query "sku.name" -o tsv 2>$null
             if ($sku -eq "Standard_LRS") {
                 Write-Host "    Restaurando $dName de Standard_LRS a StandardSSD_LRS..."
@@ -85,7 +85,7 @@ switch ($Action) {
         foreach ($mi in $sqlMis) {
             if ($mi) {
                 Write-Host "==> Iniciando Azure SQL Managed Instance $mi..."
-                az sql mi start --resource-group $ResourceGroupName --name $mi --no-wait 2>$null
+                az sql mi start --resource-group $ResourceGroupName --mi $mi --no-wait
             }
         }
     }
