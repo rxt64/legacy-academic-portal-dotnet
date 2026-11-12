@@ -81,11 +81,21 @@ switch ($Action) {
         Write-Host "==> Iniciando VM $VmName y vm-jumpbox-lab en $ResourceGroupName..."
         az vm start --resource-group $ResourceGroupName --name $VmName
         az vm start --resource-group $ResourceGroupName --name "vm-jumpbox-lab" 2>$null
-        $sqlMis = az sql mi list --resource-group $ResourceGroupName --query "[?state=='Stopped'].name" -o tsv 2>$null
-        foreach ($mi in $sqlMis) {
-            if ($mi) {
-                Write-Host "==> Iniciando Azure SQL Managed Instance $mi..."
-                az sql mi start --resource-group $ResourceGroupName --mi $mi --no-wait
+
+        Write-Host "==> Verificando estado de Azure SQL Managed Instance en $ResourceGroupName (suscripción $(az account show --query id -o tsv))..."
+        $sqlMiJson = az sql mi list --resource-group $ResourceGroupName --query "[].{name:name, state:state}" -o json 2>$null
+        $allSqlMis = @()
+        if ($sqlMiJson) { $allSqlMis = $sqlMiJson | ConvertFrom-Json }
+        if (-not $allSqlMis -or $allSqlMis.Count -eq 0) {
+            Write-Warning "No se encontró ninguna Azure SQL Managed Instance en el grupo de recursos '$ResourceGroupName'. Si esperabas encontrar una ya desplegada, confirma: (1) la suscripción activa (az account show), (2) el nombre del grupo de recursos, y (3) en el Portal, navega a 'SQL managed instances' (NO 'Azure Arc > SQL Server instances', que es un servicio distinto para SQL Server on-premises/VM registrado vía Arc)."
+        }
+        foreach ($mi in $allSqlMis) {
+            if ($mi.state -eq 'Stopped') {
+                Write-Host "    Iniciando Azure SQL Managed Instance $($mi.name) (estado actual: Stopped)..."
+                az sql mi start --resource-group $ResourceGroupName --mi $mi.name --no-wait
+            }
+            else {
+                Write-Host "    Azure SQL Managed Instance $($mi.name) ya está en estado '$($mi.state)' (no requiere inicio)."
             }
         }
     }
