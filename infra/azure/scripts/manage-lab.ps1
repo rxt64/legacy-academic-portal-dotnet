@@ -7,6 +7,8 @@
     - Validate     : Ejecuta az bicep build, az deployment sub validate y what-if en mexicocentral.
     - Deploy       : Ejecuta el despliegue de Bicep en mexicocentral.
     - Start        : Inicia la VM vm-sigea-win.
+    - Status       : Verifica (solo lectura, sin cambios) el estado de VM/discos/SQL MI con salida en color [OK]/[FALLO].
+                      Pensado para correr rápido antes de cada bloque de la demo, no solo al inicio del evento.
     - Deallocate   : Desasigna (detiene facturación de cómputo) la VM vm-sigea-win.
     - ResetDataset : Invoca reset-dataset-sigea.ps1 dentro de la VM mediante az vm run-command.
     - Teardown     : Elimina exclusivamente el grupo de recursos del laboratorio (requiere -ConfirmTeardown).
@@ -14,7 +16,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('Validate', 'Deploy', 'Start', 'Deallocate', 'ResetDataset', 'TeardownTargetsOnly', 'Teardown')]
+    [ValidateSet('Validate', 'Deploy', 'Start', 'Status', 'Deallocate', 'ResetDataset', 'TeardownTargetsOnly', 'Teardown')]
     [string]$Action,
 
     [string]$SubscriptionId = $env:AZURE_SUBSCRIPTION_ID,
@@ -96,6 +98,38 @@ switch ($Action) {
             }
             else {
                 Write-Host "    Azure SQL Managed Instance $($mi.name) ya está en estado '$($mi.state)' (no requiere inicio)."
+            }
+        }
+    }
+    'Status' {
+        Write-Host "==> Verificando estado de los recursos de SIGEA (solo lectura, sin cambios)..."
+        foreach ($v in @($VmName, "vm-jumpbox-lab")) {
+            $vmState = az vm get-instance-view --resource-group $ResourceGroupName --name $v --query "instanceView.statuses[?starts_with(code, 'PowerState/')].displayStatus | [0]" -o tsv 2>$null
+            if ($vmState -eq 'VM running') {
+                Write-Host "[OK] VM $v -> $vmState" -ForegroundColor Green
+            } else {
+                Write-Host "[FALLO] VM $v -> '$vmState' (se esperaba 'VM running')" -ForegroundColor Red
+            }
+        }
+        foreach ($dName in @("osdisk-$VmName", "disk-$VmName-sqldata", "osdisk-vm-jumpbox-lab")) {
+            $sku = az disk show --resource-group $ResourceGroupName --name $dName --query "sku.name" -o tsv 2>$null
+            if ($sku -eq 'StandardSSD_LRS') {
+                Write-Host "[OK] Disco $dName -> $sku" -ForegroundColor Green
+            } else {
+                Write-Host "[FALLO] Disco $dName -> '$sku' (se esperaba StandardSSD_LRS; una política de gobernanza pudo degradarlo)" -ForegroundColor Red
+            }
+        }
+        $sqlMiJson = az sql mi list --resource-group $ResourceGroupName --query "[].{name:name, state:state}" -o json 2>$null
+        $allSqlMis = @()
+        if ($sqlMiJson) { $allSqlMis = $sqlMiJson | ConvertFrom-Json }
+        if (-not $allSqlMis -or $allSqlMis.Count -eq 0) {
+            Write-Host "[FALLO] No se encontró ninguna Azure SQL Managed Instance en '$ResourceGroupName'." -ForegroundColor Red
+        }
+        foreach ($mi in $allSqlMis) {
+            if ($mi.state -eq 'Ready') {
+                Write-Host "[OK] SQL MI $($mi.name) -> Ready" -ForegroundColor Green
+            } else {
+                Write-Host "[FALLO] SQL MI $($mi.name) -> '$($mi.state)' (se esperaba Ready; ejecuta -Action Start para reiniciarlo)" -ForegroundColor Red
             }
         }
     }
