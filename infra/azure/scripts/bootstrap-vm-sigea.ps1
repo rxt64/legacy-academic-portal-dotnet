@@ -72,10 +72,19 @@ if ($currentLogDir -ne $sqlLogDir) {
     $needsSqlRestart = $true
 }
 
-# Asegurar que el puerto 1433 esté bloqueado en el firewall de Windows para tráfico entrante externo
-if (-not (Get-NetFirewallRule -DisplayName "SIGEA-Block-Inbound-SQL-1433" -ErrorAction SilentlyContinue)) {
-    New-NetFirewallRule -DisplayName "SIGEA-Block-Inbound-SQL-1433" -Direction Inbound -Protocol TCP -LocalPort 1433 -Action Block | Out-Null
+# Bloquear el puerto 1433 para tráfico entrante externo, permitiendo únicamente snet-jumpbox
+# (acceso de solo lectura para el presentador vía SQL Server Management Studio durante la demo).
+# NOTA: un bloqueo "Action Block" con RemoteAddress=Any (o incluso RemoteAddress=Internet) SIEMPRE
+# gana sobre cualquier regla Allow superpuesta en Windows Firewall (las reglas Block tienen
+# prioridad absoluta sobre Allow, sin importar el orden ni la especificidad). Por eso aquí NO se
+# crea ninguna regla "Block": alcanza con una única regla "Allow" acotada a snet-jumpbox, ya que
+# el comportamiento por defecto de Windows Firewall es bloquear todo lo que no esté explícitamente
+# permitido (confirmado: sin esta regla, ningún origen remoto puede llegar a 1433; con ella, solo
+# snet-jumpbox puede).
+if (-not (Get-NetFirewallRule -DisplayName "SIGEA-Allow-Jumpbox-SQL-1433" -ErrorAction SilentlyContinue)) {
+    New-NetFirewallRule -DisplayName "SIGEA-Allow-Jumpbox-SQL-1433" -Direction Inbound -Protocol TCP -LocalPort 1433 -RemoteAddress "10.42.8.0/24" -Action Allow | Out-Null
 }
+Remove-NetFirewallRule -DisplayName "SIGEA-Block-Inbound-SQL-1433" -ErrorAction SilentlyContinue
 
 if ($needsSqlRestart) {
     Write-Host "    Reiniciando servicio MSSQLSERVER para aplicar configuración..."
