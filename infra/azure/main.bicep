@@ -118,6 +118,12 @@ param jumpboxVmName string = 'vm-jumpbox-lab'
 @description('Usuario administrador local de la VM puente.')
 param jumpboxAdminUsername string = 'jumpboxadmin'
 
+@description('Aprovisionar acceso privado (Load Balancer interno + DNS privado) para navegar SIGEA y GEPER únicamente desde la VNet del laboratorio (VM Puente), sin depender de Azure Front Door durante la demo.')
+param enablePrivateAccess bool = true
+
+@description('Nombre de la zona DNS privada compartida para acceso interno (sigea.<zona> / geper.<zona>).')
+param privateDnsZoneName string = 'lab.internal'
+
 @description('Tags genéricos aplicados a todos los recursos del laboratorio.')
 param tags object = {
   project: 'legacy-modernization-lab'
@@ -203,6 +209,34 @@ module frontDoor 'modules/frontdoor.bicep' = if (enableFrontDoor && enablePublic
   }
 }
 
+module sigeaInternalLb 'modules/sigea-internal-lb.bicep' = if (enablePrivateAccess) {
+  name: 'deploy-sigea-internal-lb'
+  scope: rg
+  params: {
+    location: location
+    lbName: 'lb-sigea-internal'
+    sigeaSubnetId: network.outputs.sigeaSubnetId
+    vnetId: network.outputs.vnetId
+    sigeaVmPrivateIp: sigeaVm.outputs.privateIpAddress
+    appPort: 80
+    tags: union(tags, {
+      application: 'SIGEA'
+    })
+  }
+}
+
+module privateDns 'modules/private-dns.bicep' = if (enablePrivateAccess) {
+  name: 'deploy-shared-private-dns'
+  scope: rg
+  params: {
+    privateDnsZoneName: privateDnsZoneName
+    vnetId: network.outputs.vnetId
+    vnetLinkName: 'link-${vnetName}'
+    sigeaLbFrontendIp: enablePrivateAccess ? sigeaInternalLb!.outputs.frontendPrivateIp : ''
+    tags: tags
+  }
+}
+
 module sqlMiMigration 'modules/sqlmi-migration.bicep' = if (enableSqlMiMigrationTarget) {
   name: 'deploy-sigea-sqlmi-migration'
   scope: rg
@@ -270,6 +304,9 @@ output frontDoorProfileName string = (enableFrontDoor && enablePublicIp) ? front
 output frontDoorId string = (enableFrontDoor && enablePublicIp) ? frontDoor!.outputs.frontDoorId : ''
 output sigeaFrontDoorEndpointHostName string = (enableFrontDoor && enablePublicIp) ? frontDoor!.outputs.sigeaEndpointHostName : ''
 output sigeaFrontDoorUrl string = (enableFrontDoor && enablePublicIp) ? frontDoor!.outputs.sigeaEndpointUrl : ''
+output sigeaPrivateLbIp string = enablePrivateAccess ? sigeaInternalLb!.outputs.frontendPrivateIp : ''
+output privateDnsZoneName string = enablePrivateAccess ? privateDns!.outputs.privateDnsZoneName : ''
+output sigeaPrivateFqdn string = enablePrivateAccess ? privateDns!.outputs.sigeaFqdn : ''
 output migrationStorageAccountName string = enableSqlMiMigrationTarget ? sqlMiMigration!.outputs.storageAccountName : ''
 output migrationBackupContainerUrl string = enableSqlMiMigrationTarget ? sqlMiMigration!.outputs.backupContainerUrl : ''
 output sqlManagedInstanceName string = enableSqlMiMigrationTarget ? sqlMiMigration!.outputs.sqlManagedInstanceName : ''

@@ -28,3 +28,5 @@ param enableFrontDoor = true
 param enableSqlMiMigrationTarget = true
 param enableAcaTarget = true
 param enableBastionJumpbox = true
+param enablePrivateAccess = true
+param privateDnsZoneName = 'lab.internal'

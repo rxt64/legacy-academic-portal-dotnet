@@ -88,6 +88,26 @@ var frontDoorAllowRules = enableFrontDoorBackend ? [
   }
 ] : []
 
+@description('Habilitar regla explicita de entrada para el health probe del Load Balancer interno (requerida en este tenant: la regla default AllowAzureLoadBalancerInBound no fue suficiente en pruebas reales).')
+param enableInternalLbProbe bool = true
+
+var internalLbProbeRules = enableInternalLbProbe ? [
+  {
+    name: 'Allow-AzureLoadBalancer-Probe-Inbound'
+    properties: {
+      description: 'Permite explicitamente el health probe del Load Balancer interno (Service Tag AzureLoadBalancer). La regla default AllowAzureLoadBalancerInBound (65001) no fue suficiente en este tenant durante pruebas reales; esta regla explicita a prioridad 140 lo garantiza.'
+      protocol: 'Tcp'
+      sourcePortRange: '*'
+      destinationPortRange: '*'
+      sourceAddressPrefix: 'AzureLoadBalancer'
+      destinationAddressPrefix: '*'
+      access: 'Allow'
+      priority: 140
+      direction: 'Inbound'
+    }
+  }
+] : []
+
 var baseDenyRules = [
   {
     name: 'Deny-Internet-Web-Inbound'
@@ -131,7 +151,7 @@ resource sigeaNsg 'Microsoft.Network/networkSecurityGroups@2023-11-01' = {
   location: location
   tags: tags
   properties: {
-    securityRules: concat(rdpAllowRules, frontDoorAllowRules, baseDenyRules)
+    securityRules: concat(rdpAllowRules, frontDoorAllowRules, internalLbProbeRules, baseDenyRules)
   }
 }
 
